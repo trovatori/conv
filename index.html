@@ -137,9 +137,11 @@
     .converters-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: 1fr;
       gap: 1px; background: var(--border);
       border: 1px solid var(--border);
     }
+    .converters-grid .converter-card { grid-row: 1; }
     .converter-card {
       background: var(--bg);
       padding: 36px 36px 28px;
