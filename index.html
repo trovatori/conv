@@ -422,11 +422,6 @@
           Apri <span class="material-symbols-outlined">arrow_forward</span>
         </div>
       </div>
-      <a class="card-guide-link" href="tei-converter-dipl-guida.html"
-         onclick="event.stopPropagation(); event.preventDefault(); window.location='tei-converter-dipl-guida.html';">
-        <span class="material-symbols-outlined">menu_book</span>
-        Guida alla notazione
-      </a>
     </a>
 
     <!-- INTERPRETATIVA -->
@@ -453,6 +448,25 @@
     </a>
 
   </div>
+
+  <!-- LINK GUIDA SOTTO LA GRIGLIA -->
+  <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:1px; margin-top:0;">
+    <div></div>
+    <div style="padding: 12px 0 0 2px;">
+      <a href="tei-converter-dipl-guida.html" style="
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 9px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.1em;
+        color: var(--muted); text-decoration: none;
+        transition: color .15s;
+      " onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">
+        <span class="material-symbols-outlined" style="font-size:13px; font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20;">menu_book</span>
+        Guida alla notazione compatta
+      </a>
+    </div>
+    <div></div>
+  </div>
+
 </section>
 
 <hr class="divider">
