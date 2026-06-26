@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TEI Converter Edizione diplomatica/interpretativa — Istruzioni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent:  #a03f33;
+    --accent2: #3a6b8a;
+    --bg:      #fbf9f4;
+    --panel:   #f5f3ee;
+    --text:    #1a1410;
+    --muted:   #6b7280;
+    --border:  #e2ddd6;
+    --mono:    "JetBrains Mono", monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: "Source Sans 3", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header { background: var(--text); color: white; padding: 18px 48px; display: flex; align-items: baseline; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+  .hd-title { font-family: "Source Serif 4", serif; font-size: 1.1rem; font-weight: 300; font-style: italic; }
+  .hd-title strong { font-style: normal; font-weight: 700; color: #e8c4be; }
+  .hd-nav { display: flex; gap: 24px; }
+  .hd-nav a { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #888; text-decoration: none; transition: color .15s; }
+  .hd-nav a:hover { color: white; }
+
+  .page { max-width: 860px; margin: 0 auto; padding: 64px 48px 96px; }
+
+  .doc-hero { border-bottom: 1px solid var(--border); padding-bottom: 48px; margin-bottom: 56px; }
+  .doc-eyebrow { font-size: 8px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .doc-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--accent); }
+  .doc-title { font-family: "Source Serif 4", serif; font-size: 2.4rem; font-weight: 300; line-height: 1.2; margin-bottom: 20px; }
+  .doc-title em { font-style: italic; color: var(--accent); }
+  .doc-intro { font-family: "Source Serif 4", serif; font-size: 1.05rem; line-height: 1.85; color: var(--muted); max-width: 640px; }
+
+  .toc { background: var(--panel); border: 1px solid var(--border); padding: 24px 28px; margin-bottom: 56px; }
+  .toc-label { font-size: 8px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .toc ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .toc li { font-size: 0.9rem; }
+  .toc a { color: var(--text); text-decoration: none; transition: color .15s; }
+  .toc a:hover { color: var(--accent); }
+
+  .doc-section { margin-bottom: 64px; }
+  .section-num { font-family: "Source Serif 4", serif; font-size: 3rem; font-weight: 200; color: var(--border); line-height: 1; margin-bottom: -8px; }
+  .section-title { font-family: "Source Serif 4", serif; font-size: 1.5rem; font-weight: 400; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 28px; }
+  .section-title em { font-style: italic; color: var(--accent); }
+  h3 { font-family: "Source Serif 4", serif; font-size: 1.1rem; font-weight: 600; color: var(--text); margin: 28px 0 12px; }
+
+  .prose { font-family: "Source Serif 4", serif; font-size: 1rem; line-height: 1.85; color: var(--text); }
+  .prose p { margin-bottom: 1rem; }
+  .prose p:last-child { margin-bottom: 0; }
+  .prose strong { font-weight: 700; }
+  .prose em { font-style: italic; }
+
+  .syntax-table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.9rem; }
+  .syntax-table thead tr { border-bottom: 2px solid var(--border); }
+  .syntax-table th { font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); padding: 8px 12px; text-align: left; }
+  .syntax-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; font-family: "Source Serif 4", serif; font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+  .syntax-table td:first-child { font-family: var(--mono); font-size: 11.5px; color: var(--text); white-space: nowrap; }
+  .syntax-table tr:last-child td { border-bottom: none; }
+  .syntax-table tr:hover td { background: var(--panel); }
+
+  .example-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 24px 0; }
+  .ex-pane { background: var(--bg); }
+  .ex-head { padding: 8px 14px; background: var(--panel); font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .ex-body { font-family: var(--mono); font-size: 11.5px; line-height: 1.75; padding: 16px; color: var(--text); white-space: pre-wrap; }
+  .ex-body .hl  { color: var(--accent); font-weight: 600; }
+  .ex-body .hl2 { color: var(--accent2); }
+  .ex-body .dim { color: #999; }
+
+  .note-box { border-left: 3px solid var(--accent); background: rgba(160,63,51,0.06); padding: 14px 18px; margin: 20px 0; font-family: "Source Serif 4", serif; font-size: 0.9rem; line-height: 1.7; }
+  .note-box strong { font-family: "Source Sans 3", sans-serif; font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 6px; }
+
+  .step-list { display: flex; flex-direction: column; gap: 16px; margin: 24px 0; }
+  .step { display: flex; gap: 16px; align-items: flex-start; }
+  .step-num { font-family: "Source Serif 4", serif; font-size: 1.4rem; font-weight: 200; color: var(--accent); min-width: 28px; line-height: 1.3; }
+  .step-body { font-family: "Source Serif 4", serif; font-size: 0.95rem; line-height: 1.75; padding-top: 4px; }
+  .step-body strong { font-family: "Source Sans 3", sans-serif; font-weight: 700; font-size: 0.85rem; }
+
+  code { font-family: var(--mono); font-size: 11px; background: white; border: 1px solid var(--border); padding: 1px 5px; border-radius: 2px; color: var(--text); }
+
+  footer { border-top: 1px solid var(--border); background: var(--panel); padding: 20px 48px; display: flex; justify-content: space-between; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #bbb; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 640px) {
+    .page { padding: 40px 24px 64px; }
+    header { padding: 14px 24px; }
+    .example-pair { grid-template-columns: 1fr; }
+    footer { padding: 16px 24px; flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title"><strong>TEI Converter Edizione diplomatica/interpretativa</strong> — Istruzioni per l'uso</div>
+  <nav class="hd-nav">
+    <a href="tei-converter-dipl.html">← Converter</a>
+    <a href="#toolbar">Toolbar</a>
+    <a href="#sintassi">Sintassi</a>
+    <a href="#esempi">Esempi</a>
+    <a href="#flusso">Flusso di lavoro</a>
+    <a href="#tecnico">Note tecniche</a>
+  </nav>
+</header>
+
+<div class="page">
+
+  <div class="doc-hero">
+    <div class="doc-eyebrow">Laboratorio di Filologia Romanza Digitale</div>
+    <h1 class="doc-title">Guida al <em>TEI Converter</em><br>Edizione diplomatica/interpretativa</h1>
+    <p class="doc-intro">
+      Il converter permette di codificare trascrizioni diplomatiche e diplomatico-interpretative
+      usando una notazione compatta leggibile, e di convertirla automaticamente in XML conforme
+      allo standard TEI P5. Supporta cambi di carta, numerazione dei righi, abbreviazioni,
+      cancellature, danni, integrazioni e aggiunte marginali.
+    </p>
+  </div>
+
+  <div class="toc">
+    <div class="toc-label">Indice</div>
+    <ol>
+      <li><a href="#toolbar">La toolbar: stile, paragrafi e numerazione</a></li>
+      <li><a href="#sintassi">La notazione compatta — tabella di riferimento</a></li>
+      <li><a href="#esempi">Esempi completi</a></li>
+      <li><a href="#flusso">Flusso di lavoro consigliato</a></li>
+      <li><a href="#tecnico">Note tecniche e limiti</a></li>
+    </ol>
+  </div>
+
+  <!-- 01 TOOLBAR -->
+  <section class="doc-section" id="toolbar">
+    <div class="section-num">01</div>
+    <h2 class="section-title">La toolbar: <em>stile, paragrafi e numerazione</em></h2>
+
+    <div class="prose">
+      <p>La toolbar sopra l'area di input contiene tre gruppi di controlli.</p>
+      <p><strong>Stile (B / I)</strong> — applicano grassetto e corsivo al testo selezionato tramite i pulsanti o le scorciatoie <code>Ctrl+B</code> e <code>Ctrl+I</code>. Il corsivo non può essere attivato scrivendo <code>_testo_</code> nell'editor (l'underscore è riservato al comando <code>{+_ testo}</code> per le aggiunte al margine inferiore); va applicato esclusivamente tramite il pulsante I o la scorciatoia.</p>
+      <p><strong>Paragrafi</strong> — menu a quattro opzioni che determina la struttura dei paragrafi nel TEI generato.</p>
+    </div>
+
+    <table class="syntax-table">
+      <thead><tr><th>Opzione</th><th>TEI generato</th><th>Uso consigliato</th></tr></thead>
+      <tbody>
+        <tr><td>nessun paragrafo</td><td>Tutto in <code>&lt;ab&gt;</code> (anonymous block)</td><td>Edizione diplomatica pura, senza suddivisioni in paragrafi</td></tr>
+        <tr><td>non numerati</td><td><code>&lt;p&gt;</code> senza attributo <code>@n</code></td><td>Quando la suddivisione in paragrafi è rilevante ma non numerata</td></tr>
+        <tr><td>numerazione continua</td><td><code>&lt;p n="1"&gt;</code>, <code>&lt;p n="2"&gt;</code>…</td><td>Testi in prosa con paragrafi numerati progressivamente</td></tr>
+        <tr><td>numerazione per carta</td><td><code>&lt;p n="1"&gt;</code>, il contatore si azzera ad ogni cambio carta</td><td>Quando i paragrafi si contano per carta</td></tr>
+      </tbody>
+    </table>
+
+    <div class="prose">
+      <p><strong>Dal rigo</strong> — campo numerico che imposta il numero del primo <code>&lt;lb&gt;</code>. Utile quando si trascrive una carta alla volta: se la carta inizia al rigo 7 nel conteggio complessivo, inserire <code>7</code>. Il contatore si azzera automaticamente ad ogni cambio carta (<code>[sigla]</code>). Il valore di default è <code>1</code> e si azzera al click su <em>Pulisci</em>.</p>
+    </div>
+
+    <div class="note-box">
+      <strong>Cambio carta e paragrafi</strong>
+      Il cambio carta <code>[sigla]</code> su riga propria preceduto da una riga vuota genera
+      sia <code>&lt;pb&gt;</code> che un nuovo <code>&lt;p&gt;</code> (nelle modalità con paragrafi),
+      e azzera il contatore paragrafi in modalità "numerazione per carta".
+      Se <code>[sigla]</code> è nel mezzo di un testo (non preceduto da riga vuota),
+      genera solo <code>&lt;pb&gt;</code> e il paragrafo corrente continua.
+    </div>
+  </section>
+
+  <!-- 02 SINTASSI -->
+  <section class="doc-section" id="sintassi">
+    <div class="section-num">02</div>
+    <h2 class="section-title">La notazione compatta — <em>tabella di riferimento</em></h2>
+
+    <div class="prose"><p>
+      Ogni riga del testo in ingresso corrisponde a un rigo manoscritto <code>&lt;lb n="…"/&gt;</code>.
+      Una riga contenente solo <code>/</code> rappresenta una riga vuota nel manoscritto
+      (numerata ma senza testo). I comandi inline si marcano con parentesi graffe <code>{}</code>;
+      le parentesi tonde nel testo non vengono interpretate e possono essere usate liberamente
+      per convenzioni di trascrizione (es. scioglimenti di abbreviazioni non codificati).
+    </p></div>
+
+    <table class="syntax-table">
+      <thead><tr><th>Sintassi</th><th>TEI generato</th><th>Significato</th></tr></thead>
+      <tbody>
+        <tr><td>[sigla]</td><td><code>&lt;pb facs="#sigla"/&gt;</code></td><td>Cambio carta — su riga propria</td></tr>
+        <tr><td>/</td><td><code>&lt;lb n="n"/&gt;</code> senza testo</td><td>Riga vuota nel manoscritto (numerata)</td></tr>
+        <tr><td>riga vuota</td><td>Chiude e apre <code>&lt;p&gt;</code></td><td>Cambio di paragrafo</td></tr>
+        <tr><td>$</td><td><code>&lt;lg&gt;</code> … <code>&lt;/lg&gt;</code></td><td>Apre/chiude un blocco in versi (toggle)</td></tr>
+        <tr><td>|</td><td><code>&lt;milestone unit="verse" n="n"/&gt;</code></td><td>Confine di verso (usare dentro un blocco $)</td></tr>
+        <tr><td>{-testo}</td><td><code>&lt;del&gt;testo&lt;/del&gt;</code></td><td>Cancellatura</td></tr>
+        <tr><td>{-del>add}</td><td><code>&lt;subst&gt;&lt;del rend="overwritten"&gt;del&lt;/del&gt;&lt;add place="over"&gt;add&lt;/add&gt;&lt;/subst&gt;</code></td><td>Sostituzione per sovrascrittura</td></tr>
+        <tr><td>{*testo}</td><td><code>&lt;damage&gt;testo&lt;/damage&gt;</code></td><td>Danno materiale / lacuna</td></tr>
+        <tr><td>{&lt;testo&gt;}</td><td><code>&lt;supplied&gt;testo&lt;/supplied&gt;</code></td><td>Integrazione editoriale</td></tr>
+        <tr><td>{abbr/expan}</td><td><code>&lt;choice&gt;&lt;abbr&gt;abbr&lt;/abbr&gt;&lt;expan&gt;expan&lt;/expan&gt;&lt;/choice&gt;</code></td><td>Abbreviazione con scioglimento</td></tr>
+        <tr><td>{orig=reg}</td><td><code>&lt;choice&gt;&lt;orig&gt;orig&lt;/orig&gt;&lt;reg&gt;reg&lt;/reg&gt;&lt;/choice&gt;</code></td><td>Forma originale / forma regolarizzata</td></tr>
+        <tr><td>{{abbr/expan}testo=reg}</td><td><code>&lt;choice&gt;&lt;orig&gt;&lt;choice&gt;…&lt;/choice&gt;testo&lt;/orig&gt;&lt;reg&gt;reg&lt;/reg&gt;&lt;/choice&gt;</code></td><td>Costrutto annidato: abbreviazione dentro orig</td></tr>
+        <tr><td>{+^ {costrutto}}</td><td><code>&lt;add place="above"&gt;&lt;choice&gt;…&lt;/choice&gt;&lt;/add&gt;</code></td><td>Aggiunta con costrutto annidato</td></tr>
+        <tr><td>{+^ testo}</td><td><code>&lt;add place="above"&gt;testo&lt;/add&gt;</code></td><td>Aggiunta sopra il rigo</td></tr>
+        <tr><td>{+&gt; testo}</td><td><code>&lt;add place="marginRight"&gt;testo&lt;/add&gt;</code></td><td>Aggiunta nel margine destro</td></tr>
+        <tr><td>{+&lt; testo}</td><td><code>&lt;add place="marginLeft"&gt;testo&lt;/add&gt;</code></td><td>Aggiunta nel margine sinistro</td></tr>
+        <tr><td>{+_ testo}</td><td><code>&lt;add place="marginBottom"&gt;testo&lt;/add&gt;</code></td><td>Aggiunta nel margine inferiore</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note-box">
+      <strong>Parentesi tonde libere</strong>
+      Le parentesi tonde nel testo non vengono interpretate dal parser. Possono essere usate
+      liberamente come convenzione grafica di trascrizione — ad esempio <code>p(ro)spera</code>
+      per indicare che <em>p</em> è abbreviata e <em>ro</em> è lo scioglimento — senza che
+      il converter generi alcun tag TEI. Per codificare le abbreviazioni in modo conforme
+      allo standard usare la sintassi <code>{abbr/expan}</code>.
+    </div>
+
+    <div class="note-box">
+      <strong>Orig e reg: diplomatica e interpretativa a confronto</strong>
+      La notazione <code>{orig=reg}</code> è pensata per i casi in cui due parole scritte unite
+      nel manoscritto vanno separate nella lettura interpretativa, o viceversa. La forma
+      <em>orig</em> corrisponde a ciò che si legge nel manoscritto; la forma <em>reg</em>
+      è la proposta dell'editore. Il visualizzatore mostra <em>orig</em> nell'edizione
+      diplomatica e <em>reg</em> nell'edizione interpretativa. Si distingue da
+      <code>{abbr/expan}</code> perché non aggiunge lettere assenti nel manoscritto,
+      ma propone una normalizzazione grafica o una separazione di parole.
+    </div>
+
+    <div class="note-box">
+      <strong>Underscore riservato</strong>
+      Il carattere <code>_</code> è riservato al comando <code>{+_ testo}</code> per le aggiunte
+      al margine inferiore. Per questa ragione il corsivo nell'editor non si attiva scrivendo
+      <code>_testo_</code> ma solo tramite il pulsante I della toolbar o la scorciatoia
+      <code>Ctrl+I</code>.
+    </div>
+  </section>
+
+  </section>
+
+  <!-- 03 ESEMPI -->
+  <section class="doc-section" id="esempi">
+    <div class="section-num">03</div>
+    <h2 class="section-title"><em>Esempi</em> completi</h2>
+
+    <div class="prose"><p><strong>Esempio completo</strong> — testo con cambio carta, abbreviazioni, cancellatura, danno, integrazione e aggiunta marginale (modalità "nessun paragrafo"):</p></div>
+
+    <div class="example-pair">
+      <div class="ex-pane">
+        <div class="ex-head">Notazione compatta (input)</div>
+        <div class="ex-body"><span class="hl">[L_41v]</span>
+Amicho {-dileto} charisimo cholquale neltenpo {ch/che} fortuna fo al
+mio felize stato {p/pro}spera et {*fauore} ideleteuolj {+^ molto} ono
+rj et {&lt;propij&gt;} chomodi partizipai / Ora {p/per}{ch/che} ella con
+turbido volto {+&gt; nota del copista} et ofoschatj venti
+
+<span class="hl">[L_42r]</span>
+mi tiene volgiendo eltenpo dileteuole in rio
+benj nelprexente chomo nelpasato.</div>
+      </div>
+      <div class="ex-pane">
+        <div class="ex-head">TEI generato</div>
+        <div class="ex-body"><span class="dim">&lt;div type="diplomatic"&gt;
+  &lt;ab&gt;</span>
+    <span class="hl">&lt;pb facs="#L_41v"/&gt;</span>
+    <span class="dim">&lt;lb n="1"/&gt;</span>Amicho <span class="hl">&lt;del&gt;</span>dileto<span class="hl">&lt;/del&gt;</span> … <span class="hl2">&lt;choice&gt;&lt;abbr&gt;</span>ch<span class="hl2">&lt;/abbr&gt;&lt;expan&gt;</span>che<span class="hl2">&lt;/expan&gt;&lt;/choice&gt;</span> …
+    <span class="dim">&lt;lb n="2"/&gt;</span>… <span class="hl2">&lt;choice&gt;&lt;abbr&gt;</span>p<span class="hl2">&lt;/abbr&gt;&lt;expan&gt;</span>pro<span class="hl2">&lt;/expan&gt;&lt;/choice&gt;</span>spera et <span class="hl">&lt;damage&gt;</span>fauore<span class="hl">&lt;/damage&gt;</span> … <span class="hl2">&lt;add place="above"&gt;</span>molto<span class="hl2">&lt;/add&gt;</span> …
+    <span class="dim">&lt;lb n="3"/&gt;</span>… <span class="hl2">&lt;supplied&gt;</span>propij<span class="hl2">&lt;/supplied&gt;</span> … <span class="dim">&lt;lb n="4"/&gt;</span> …
+    <span class="dim">&lt;lb n="5"/&gt;</span>… <span class="hl2">&lt;add place="marginRight"&gt;</span>nota del copista<span class="hl2">&lt;/add&gt;</span> …
+    <span class="hl">&lt;pb facs="#L_42r"/&gt;</span>
+    <span class="dim">&lt;lb n="1"/&gt;</span>mi tiene …
+    <span class="dim">&lt;lb n="2"/&gt;</span>benj …
+<span class="dim">  &lt;/ab&gt;
+&lt;/div&gt;</span></div>
+      </div>
+    </div>
+
+    <div class="prose" style="margin-top:32px"><p><strong>Esempio con paragrafi numerati per carta</strong> — due paragrafi sulla prima carta, uno sulla seconda:</p></div>
+
+    <div class="example-pair">
+      <div class="ex-pane">
+        <div class="ex-head">Notazione compatta (input)</div>
+        <div class="ex-body"><span class="hl">[L_1r]</span>
+Primo paragrafo della prima carta.
+Continua sulla stessa carta.
+
+Secondo paragrafo. Ancora sulla prima carta.
+
+<span class="hl">[L_1v]</span>
+Primo paragrafo della seconda carta.
+Il contatore riparte da uno.</div>
+      </div>
+      <div class="ex-pane">
+        <div class="ex-head">TEI generato</div>
+        <div class="ex-body"><span class="dim">&lt;div type="diplomatic"&gt;</span>
+  <span class="hl">&lt;pb facs="#L_1r"/&gt;</span>
+  <span class="hl2">&lt;p n="1"&gt;</span>
+    <span class="dim">&lt;lb n="1"/&gt;</span>Primo paragrafo …
+    <span class="dim">&lt;lb n="2"/&gt;</span>Continua …
+  <span class="hl2">&lt;/p&gt;</span>
+  <span class="hl2">&lt;p n="2"&gt;</span>
+    <span class="dim">&lt;lb n="3"/&gt;</span>Secondo paragrafo …
+  <span class="hl2">&lt;/p&gt;</span>
+  <span class="hl">&lt;pb facs="#L_1v"/&gt;</span>
+  <span class="hl2">&lt;p n="1"&gt;</span>
+    <span class="dim">&lt;lb n="1"/&gt;</span>Primo paragrafo …
+  <span class="hl2">&lt;/p&gt;</span>
+<span class="dim">&lt;/div&gt;</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03b ESEMPI ANNIDATI -->
+  <section class="doc-section" id="annidati" style="margin-top:-32px">
+
+    <div class="prose" style="margin-top:32px"><p><strong>Costrutti annidati</strong> — il parser supporta fino a tre livelli di annidamento. I casi più comuni:</p></div>
+
+    <div class="example-pair">
+      <div class="ex-pane">
+        <div class="ex-head">Notazione compatta</div>
+        <div class="ex-body"><span class="dim">abbr dentro orig/reg:</span>
+{{i(n)/in}creddile=incredibile}
+
+<span class="dim">orig/reg dentro add:</span>
+{+^ {percaso=per caso}}
+
+<span class="dim">abbr dentro orig, dentro add:</span>
+{+^ {{p(e)r/per}caso=per caso}}</div>
+      </div>
+      <div class="ex-pane">
+        <div class="ex-head">TEI generato</div>
+        <div class="ex-body"><span class="hl2">&lt;choice&gt;</span>
+  <span class="hl2">&lt;orig&gt;</span>
+    <span class="hl2">&lt;choice&gt;&lt;abbr&gt;</span>i(n)<span class="hl2">&lt;/abbr&gt;</span>
+    <span class="hl2">&lt;expan&gt;</span>in<span class="hl2">&lt;/expan&gt;&lt;/choice&gt;</span>creddile
+  <span class="hl2">&lt;/orig&gt;</span>
+  <span class="hl2">&lt;reg&gt;</span>incredibile<span class="hl2">&lt;/reg&gt;</span>
+<span class="hl2">&lt;/choice&gt;</span>
+
+<span class="hl2">&lt;add place="above"&gt;</span>
+  <span class="hl2">&lt;choice&gt;&lt;orig&gt;</span>percaso<span class="hl2">&lt;/orig&gt;</span>
+  <span class="hl2">&lt;reg&gt;</span>per caso<span class="hl2">&lt;/reg&gt;&lt;/choice&gt;</span>
+<span class="hl2">&lt;/add&gt;</span>
+
+<span class="hl2">&lt;add place="above"&gt;</span>
+  <span class="hl2">&lt;choice&gt;&lt;orig&gt;</span>
+    <span class="hl2">&lt;choice&gt;&lt;abbr&gt;</span>p(e)r<span class="hl2">&lt;/abbr&gt;</span>
+    <span class="hl2">&lt;expan&gt;</span>per<span class="hl2">&lt;/expan&gt;&lt;/choice&gt;</span>caso
+  <span class="hl2">&lt;/orig&gt;</span>
+  <span class="hl2">&lt;reg&gt;</span>per caso<span class="hl2">&lt;/reg&gt;&lt;/choice&gt;</span>
+<span class="hl2">&lt;/add&gt;</span></div>
+      </div>
+    </div>
+
+    <div class="note-box">
+      <strong>Sostituzione per sovrascrittura</strong>
+      La sintassi <code>{-del>add}</code> codifica il caso in cui il copista sovrascrive
+      una lettera o una parola con un'altra. Il testo prima di <code>&gt;</code> è la forma
+      cancellata (<code>&lt;del rend="overwritten"&gt;</code>), quello dopo è la forma
+      aggiunta in sostituzione (<code>&lt;add place="over"&gt;</code>). Esempio:
+      <code>c{-o>a}py</code> → <code>c<subst><del>o</del><add>a</add></subst>py</code>
+      (la parola "copy" dove il copista ha corretto <em>o</em> in <em>a</em>).
+      Se la sostituzione non ha testo aggiunto, si usa <code>{-o>}</code>.
+    </div>
+      Il parser supporta costrutti annidati fino a tre livelli: ad esempio
+      <code>{+^ {{abbr/expan}testo=reg}}</code> — un'aggiunta che contiene un orig/reg
+      che contiene a sua volta un'abbreviazione. Oltre questa profondità il costrutto
+      va scritto manualmente in TEI.
+    </div>
+
+    <div class="prose" style="margin-top:32px"><p><strong>Testo misto prosa e versi</strong> — blocco <code>$</code> per isolare una citazione poetica nel flusso della prosa:</p></div>
+
+    <div class="example-pair">
+      <div class="ex-pane">
+        <div class="ex-head">Notazione compatta</div>
+        <div class="ex-body">[L_1r]
+Testo in prosa introduttivo che precede
+una citazione poetica.
+<span class="hl">$</span>
+primo verso |
+secondo verso |
+terzo verso |
+<span class="hl">$</span>
+Il testo in prosa riprende qui.</div>
+      </div>
+      <div class="ex-pane">
+        <div class="ex-head">TEI generato</div>
+        <div class="ex-body"><span class="dim">&lt;p&gt;</span>
+  <span class="dim">&lt;lb n="1"/&gt;</span>Testo in prosa …
+  <span class="dim">&lt;lb n="2"/&gt;</span>una citazione …
+  <span class="hl">&lt;lg&gt;</span>
+    <span class="dim">&lt;lb n="3"/&gt;</span>primo verso<span class="hl2">&lt;milestone unit="verse" n="1"/&gt;</span>
+    <span class="dim">&lt;lb n="4"/&gt;</span>secondo verso<span class="hl2">&lt;milestone unit="verse" n="2"/&gt;</span>
+    <span class="dim">&lt;lb n="5"/&gt;</span>terzo verso<span class="hl2">&lt;milestone unit="verse" n="3"/&gt;</span>
+  <span class="hl">&lt;/lg&gt;</span>
+  <span class="dim">&lt;lb n="6"/&gt;</span>Il testo in prosa …
+<span class="dim">&lt;/p&gt;</span></div>
+      </div>
+    </div>
+
+    <div class="note-box">
+      <strong>Comportamento del blocco $</strong>
+      Il simbolo <code>$</code> su riga propria funziona come toggle: il primo <code>$</code>
+      apre <code>&lt;lg&gt;</code>, il secondo lo chiude. La numerazione dei righi
+      (<code>&lt;lb&gt;</code>) è continua — non si azzera entrando nel blocco versale.
+      Se il blocco non viene chiuso esplicitamente, <code>&lt;/lg&gt;</code> viene inserito
+      automaticamente alla fine del paragrafo o del testo.
+    </div>
+  <section class="doc-section" id="flusso">
+    <div class="section-num">04</div>
+    <h2 class="section-title">Flusso di lavoro <em>consigliato</em></h2>
+
+    <div class="step-list">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Imposta paragrafi e rigo di partenza</strong><br>
+          Scegli la modalità paragrafi nel menu della toolbar. Se stai trascrivendo
+          una carta non iniziale, imposta il numero corretto nel campo <em>Dal rigo</em>.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Scrivi il testo in notazione compatta</strong><br>
+          Ogni riga = un rigo <code>&lt;lb&gt;</code>. Usa <code>[sigla]</code> su riga propria
+          per i cambi carta, <code>/</code> per le righe vuote nel manoscritto, e i comandi
+          <code>{}</code> per cancellature, danni, abbreviazioni e aggiunte.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Converti</strong> (<code>Ctrl+Invio</code> o pulsante Converti)<br>
+          Il converter genera il blocco <code>&lt;div type="diplomatic"&gt;</code> con
+          tutti i tag TEI. Verifica il risultato nel pannello destro.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Scarica o esporta</strong><br>
+          <em>Scarica .xml</em> salva solo il <code>&lt;div type="diplomatic"&gt;</code>,
+          da integrare in un file TEI esistente. <em>Esporta come TEI</em> genera un file
+          TEI P5 completo con <code>&lt;teiHeader&gt;</code> e i dati del testimone.
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Verifica con il renderer inverso</strong> (TEI → Compatta)<br>
+          Incolla il TEI già codificato per ottenere la notazione compatta e verificare
+          la correttezza della trascrizione.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 NOTE TECNICHE -->
+  <section class="doc-section" id="tecnico">
+    <div class="section-num">05</div>
+    <h2 class="section-title">Note <em>tecniche</em> e limiti</h2>
+
+    <div class="prose">
+      <p><strong>Struttura del div.</strong> Il contenitore generato è sempre
+      <code>&lt;div type="diplomatic"&gt;</code>. In modalità "nessun paragrafo" il contenuto
+      è avvolto in <code>&lt;ab&gt;</code> (anonymous block), conforme TEI P5 come alternativa
+      a <code>&lt;p&gt;</code> per blocchi di testo non strutturati in paragrafi.</p>
+
+      <p><strong>Numerazione dei righi.</strong> Il contatore <code>&lt;lb @n&gt;</code> si azzera
+      automaticamente ad ogni cambio carta (<code>[sigla]</code>), indipendentemente dalla
+      modalità paragrafi. Il campo <em>Dal rigo</em> imposta il numero del primo rigo e viene
+      applicato all'inizio di ogni carta.</p>
+
+      <p><strong>Cambio carta e paragrafi.</strong> <code>[sigla]</code> preceduto da riga vuota
+      genera cambio carta e cambio paragrafo. In modalità "numerazione per carta" azzera
+      anche il contatore dei paragrafi. Se <code>[sigla]</code> non è preceduto da riga vuota,
+      genera solo <code>&lt;pb&gt;</code> e il paragrafo corrente continua.</p>
+
+      <p><strong>Parentesi tonde.</strong> Non vengono interpretate dal parser e possono essere
+      usate liberamente come convenzione grafica (es. <code>p(ro)spera</code>). Per la codifica
+      conforme usare <code>{abbr/expan}</code>.</p>
+
+      <p><strong>Corsivo nell'editor.</strong> L'underscore <code>_</code> è riservato al comando
+      <code>{+_ testo}</code> e non attiva il corsivo nell'editor. Usare il pulsante I
+      della toolbar o <code>Ctrl+I</code>.</p>
+
+      <p><strong>Validazione.</strong> Il converter non valida rispetto allo schema TEI ufficiale.
+      Per la validazione completa si raccomanda VSCode con l'estensione XML Language Support
+      o oXygen XML Editor.</p>
+
+      <p><strong>Punto alto e autocorrezione su macOS.</strong>
+      Su macOS, il sistema operativo sostituisce automaticamente la sequenza «.=»
+      con <code>·=</code> (il punto fermo [U+002E] viene sostituito dal punto alto [U+00B7])
+      mentre si digita nel campo di notazione. Questo comportamento è gestito a livello di sistema
+      e non può essere disabilitato dal converter.</p>
+      <p>La sostituzione è puramente estetica e non altera il TEI prodotto: il converter riconosce
+      correttamente il carattere inserito, anche se un caso del tipo «.=,» viene reso
+      graficamente nel campo della notazione compatta come <code>{·=,}</code>. Il converter ignora
+      la sostituzione automatica e produce correttamente:
+      <code>&lt;choice&gt;&lt;orig&gt;.&lt;/orig&gt;&lt;reg&gt;,&lt;/reg&gt;&lt;/choice&gt;</code>.</p>
+      <p>Nell'eventualità in cui l'utente debba sostituire effettivamente il punto alto
+      (· [U+00B7]), deve inserirlo manualmente: così facendo, il comando <code>{·=,}</code>
+      produrrà correttamente:
+      <code>&lt;choice&gt;&lt;orig&gt;·&lt;/orig&gt;&lt;reg&gt;,&lt;/reg&gt;&lt;/choice&gt;</code>.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <span>TEI Converter Edizione diplomatica/interpretativa · Laboratorio di Filologia Romanza Digitale</span>
+  <a href="tei-converter-dipl.html">← Apri il converter</a>
+</footer>
+
+<script>
+  function smartQuotes(str) {
+    if (!str) return str;
+    return str
+      .replace(/(^|[\s(\[{>])"([^"])/g, '$1\u201C$2')
+      .replace(/"([\s.,;:!?)\]}>]|$)/g, '\u201D$1')
+      .replace(/(\w)'(\w)/g, '$1\u2019$2')
+      .replace(/(^|[\s>])'(\w)/g, '$1\u2018$2')
+      .replace(/'/g, '\u2019');
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement.closest('code, pre, script, style, .ex-body')) continue;
+      const fixed = smartQuotes(node.textContent);
+      if (fixed !== node.textContent) node.textContent = fixed;
+    }
+  });
+</script>
+</body>
+</html>

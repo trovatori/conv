@@ -1,0 +1,1742 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Converter Interpretativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent:  #a03f33;
+    --accent2: #3a6b8a;
+    --bg:      #fbf9f4;
+    --panel:   #f5f3ee;
+    --text:    #1a1410;
+    --muted:   #6b7280;
+    --border:  #e2ddd6;
+    --mono:    "JetBrains Mono", monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: "Source Sans 3", sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+  header { background: var(--text); color: white; padding: 14px 32px; display: flex; align-items: baseline; justify-content: space-between; flex-shrink: 0; }
+  header .hd-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; font-weight: 300; font-style: italic; }
+  .hd-title strong { font-style: normal; font-weight: 700; color: #e8c4be; }
+  .hd-subtitle { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; }
+
+  .workspace { display: flex; flex: 1; min-height: 0; }
+  .panel { display: flex; flex-direction: column; flex: 1; min-width: 0; border-right: 1px solid var(--border); }
+  .panel:last-child { border-right: none; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; gap: 8px; }
+  .panel-label { font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+  .panel-actions { display: flex; gap: 6px; align-items: center; }
+
+  .btn { font-family: "Source Sans 3", sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 12px; border-radius: 3px; border: 1px solid var(--border); background: white; color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn.primary:hover { background: #8a3329; }
+  .btn.active { background: rgba(160,63,51,0.08); border-color: var(--accent); color: var(--accent); }
+
+  /* Pannello sinistro — input TEI */
+  #input-area {
+    flex: 1; min-height: 0; overflow-y: auto;
+    font-family: var(--mono); font-size: 12px; line-height: 1.75;
+    padding: 20px; outline: none; white-space: pre-wrap; word-break: break-word;
+    color: var(--text); background: white;
+    resize: none; border: none;
+  }
+  #input-area::placeholder { color: #bbb; }
+
+  /* Pannello destro — editor interpretativa */
+  .interp-toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; flex-wrap: wrap; }
+
+  #interp-editor {
+    flex: 1; min-height: 0; overflow-y: auto;
+    font-family: "Source Serif 4", serif; font-size: 1.05rem; line-height: 1.9;
+    padding: 28px 36px; outline: none;
+    color: var(--text); background: white;
+  }
+  #interp-editor:empty::before { content: attr(data-placeholder); color: #bbb; font-style: italic; pointer-events: none; }
+
+  /* Stili testo interpretativo */
+  #interp-editor .lb-marker {
+    color: var(--muted); font-size: 0.8em;
+    font-family: "Source Sans 3", sans-serif;
+    font-weight: 400; cursor: default; user-select: none;
+  }
+  #interp-editor .lb-open { display: none; }
+  #interp-editor .lb-facs {
+    font-family: "Source Sans 3", sans-serif;
+    font-size: 0.7em; font-weight: 700;
+    color: var(--accent); vertical-align: super;
+    cursor: default; margin-right: 2px;
+  }
+  #interp-editor .tei-damage,
+  #interp-editor .tei-unclear { color: #8a6200; }
+  #interp-editor .tei-supplied { color: #2a6e3f; }
+  #interp-editor p { margin-bottom: 0.5em; }
+  #interp-editor.hide-lb .lb-marker { display: none; }
+  #interp-editor.hide-lb .lb-marker-tight { display: none; }
+
+  /* Note marker */
+  #interp-editor sup.note-marker {
+    color: var(--accent); font-family: "Source Sans 3", sans-serif;
+    font-size: 0.7em; font-weight: 700;
+    cursor: pointer; user-select: none; margin-left: 1px;
+    transition: background .1s;
+  }
+  #interp-editor sup.note-marker:hover { text-decoration: underline; }
+  #interp-editor sup.note-marker.nd-active {
+    background: rgba(160,63,51,0.13); border-radius: 2px; padding: 0 1px;
+  }
+
+  #note-drawer {
+    display: none; flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    padding: 10px 16px 12px;
+  }
+  #note-drawer.open { display: block; }
+  .nd-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .nd-meta { display: flex; align-items: baseline; gap: 8px; }
+  .nd-num { font-size: 11px; font-weight: 800; color: var(--accent); font-family: var(--mono); }
+  .nd-label { font-size: 8px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .nd-label.new { color: var(--accent); }
+  .nd-controls { display: flex; align-items: center; gap: 4px; }
+  .nd-nav { font-size: 9px; font-weight: 700; color: var(--muted); min-width: 30px; text-align: center; letter-spacing: 0.05em; }
+  #note-editor {
+    width: 100%; font-family: "Source Sans 3", sans-serif;
+    font-size: 13px; line-height: 1.65;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 3px;
+    background: white; color: var(--text); min-height: 62px;
+    outline: none; transition: border-color .15s;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  #note-editor:focus { border-color: var(--accent); }
+  #note-editor:empty::before { content: attr(data-placeholder); color: #bbb; font-style: italic; pointer-events: none; }
+
+  /* ─── Context menu ─── */
+  #ctx-menu {
+    position: fixed; display: none; z-index: 9999;
+    background: white; border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden; min-width: 190px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+  }
+  .ctx-item {
+    padding: 8px 14px; font-size: 12px;
+    font-family: "Source Sans 3", sans-serif;
+    cursor: pointer; color: var(--text);
+  }
+  .ctx-item:hover { background: var(--panel); }
+  .ctx-item.primary { color: var(--accent); font-weight: 700; }
+
+  /* Status bar */
+  .status-bar { padding: 5px 16px; background: var(--panel); border-top: 1px solid var(--border); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+
+  /* Messaggio errore */
+  .msg { padding: 8px 16px; font-size: 11px; font-weight: 600; color: white; background: var(--accent); display: none; flex-shrink: 0; }
+  .msg.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title"><strong>Converter Interpretativa</strong> — da diplomatica TEI</div>
+  <span class="hd-subtitle">Laboratorio di Filologia Romanza Digitale</span>
+</header>
+
+<div class="msg" id="msg"></div>
+
+<div class="workspace">
+
+  <!-- PANNELLO SINISTRO: input TEI diplomatica -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">Diplomatica TEI (input)</span>
+      <div class="panel-actions">
+        <button class="btn" id="btn-transfer-lb" onclick="toggleTransferLb()" title="Trasferisci &lt;lb&gt; nell'interpretativa" style="opacity:0.45">&lt;lb&gt;</button>
+        <button class="btn" id="btn-transfer-pb" onclick="toggleTransferPb()" title="Trasferisci &lt;pb&gt; nell'interpretativa" style="opacity:0.45">&lt;pb&gt;</button>
+        <button class="btn primary" onclick="convert()">Genera interpretativa →</button>
+        <button class="btn" onclick="clearInput()">Pulisci</button>
+      </div>
+    </div>
+    <textarea id="input-area" spellcheck="false" autocorrect="off" autocomplete="off"
+      placeholder="Incolla qui il contenuto di &lt;div type=&quot;diplomatic&quot;&gt;…&lt;/div&gt; — oppure un &lt;div type=&quot;interpretative&quot;&gt; già formato per modificarne solo le note."></textarea>
+  </div>
+
+  <!-- PANNELLO DESTRO: editor interpretativa -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">Interpretativa (editabile)</span>
+      <div class="panel-actions">
+        <button class="btn" id="btn-lb" onclick="toggleLb()" title="Mostra/nascondi separatori di riga">| righe</button>
+        <button class="btn" onclick="copyTei()">Copia TEI</button>
+        <button class="btn primary" onclick="downloadTei()">Scarica .xml</button>
+      </div>
+    </div>
+    <div class="interp-toolbar">
+      <span style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">Modifica selezione:</span>
+      <button class="btn" onclick="wrapSel('†','†')" title="Avvolgi in †…† (danno/lacuna)">†…†</button>
+      <button class="btn" onclick="wrapSel('⟨','⟩')" title="Avvolgi in ⟨…⟩ (integrazione)">⟨…⟩</button>
+      <button class="btn" onclick="formatSel('bold')" title="Grassetto (Ctrl+B)"><strong>B</strong></button>
+      <button class="btn" onclick="formatSel('italic')" title="Corsivo (Ctrl+I)"><em>I</em></button>
+      <button class="btn" onclick="addNote()" title="Aggiungi nota al punto del cursore — o tasto destro nel testo">Aggiungi nota</button>
+    </div>
+    <div id="interp-editor" contenteditable="true" spellcheck="true"
+      data-placeholder="L'interpretativa generata apparirà qui — modificabile direttamente."></div>
+    <!-- ─── Note drawer (una nota alla volta) ─── -->
+    <div id="note-drawer">
+      <div class="nd-header">
+        <div class="nd-meta">
+          <span class="nd-num" id="nd-num">1</span>
+          <span class="nd-label" id="nd-label">dalla diplomatica</span>
+        </div>
+        <div class="nd-controls">
+          <button class="btn" onclick="navigateNote(-1)" title="Nota precedente">‹</button>
+          <span class="nd-nav" id="nd-nav">1 / 1</span>
+          <button class="btn" onclick="navigateNote(1)" title="Nota successiva">›</button>
+          <button class="btn" id="nd-delete" onclick="deleteNote()" style="display:none;">Elimina</button>
+          <button class="btn" onclick="closeNoteDrawer()" title="Chiudi cassetto">✕</button>
+        </div>
+      </div>
+      <textarea id="note-textarea" style="display:none"></textarea>
+      <div id="note-editor" contenteditable="true" spellcheck="true"
+        data-placeholder="Testo della nota…"></div>
+    </div>
+    <div class="status-bar">
+      <span id="status">Pronto</span>
+      <span id="word-count"></span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Context menu (tasto destro nell'editor) -->
+<div id="ctx-menu">
+  <div class="ctx-item primary" onclick="addNoteFromCtxMenu()">Aggiungi nota qui</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   COSTANTI E STATO
+   SYNC: funzioni condivise con ed_diplomatica.html v7.2
+═══════════════════════════════════════════════════════ */
+const NS = "http://www.tei-c.org/ns/1.0";
+let showLb       = false;
+let transferLb   = false;
+let transferPb   = false;
+let zoneIndex    = {};
+let surfaceIndex = {};
+
+/* ─ Stato note ─ */
+let noteIndexMap    = {};  // segId → numero display
+let noteContentMap  = {};  // segId → testo plain per textarea/export-fallback
+let noteXmlMap      = {};  // segId → XML serializzato (note dalla diplomatica con <hi> ecc.)
+let noteModifiedMap = {};  // segId → true se textarea è stata modificata dall'utente
+let noteIsNew       = {};  // segId → true se creata nell'interpretativa
+let noteOrder       = [];  // segId[] in ordine DOM
+let activeNoteId    = null;
+let newNoteCounter  = 0;
+let savedRange      = null; // selezione salvata prima del context menu
+
+const walkState = {
+  currentSurface: '',
+  showSurfaceLabel: false,
+  firstLbAfterPb: false,
+  firstLbAfterLg: false,
+  lastLbWasBreakNo: false  // sopprime whitespace iniziale dopo lb break="no"
+};
+
+function toggleTransferLb() {
+  transferLb = !transferLb;
+  const btn = document.getElementById('btn-transfer-lb');
+  btn.style.opacity = transferLb ? '1' : '0.45';
+  btn.classList.toggle('active', transferLb);
+}
+
+function toggleTransferPb() {
+  transferPb = !transferPb;
+  const btn = document.getElementById('btn-transfer-pb');
+  btn.style.opacity = transferPb ? '1' : '0.45';
+  btn.classList.toggle('active', transferPb);
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILITY
+   SYNC: smartQuotes, directChild — identici a ed_diplomatica.html
+═══════════════════════════════════════════════════════ */
+function smartQuotes(str) {
+  if (!str) return str;
+  return str
+    .replace(/(^|[\s(\[{>])"([^"])/g, '$1\u201C$2')
+    .replace(/"([\s.,;:!?)\]}>]|$)/g, '\u201D$1')
+    .replace(/(\w)'(\w)/g, '$1\u2019$2')
+    .replace(/(^|[\s>])'(\w)/g, '$1\u2018$2')
+    .replace(/'/g, '\u2019');
+}
+
+function directChild(node, localName) {
+  return Array.from(node.childNodes).find(c => c.nodeType === 1 && c.localName === localName) || null;
+}
+
+function hasAncestor(el, localName) {
+  let p = el.parentNode;
+  while (p && p.nodeType === 1) {
+    if (p.localName === localName) return true;
+    p = p.parentNode;
+  }
+  return false;
+}
+
+function showMsg(text) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 3000);
+}
+
+/* ═══════════════════════════════════════════════════════
+   WALKER INTERPRETATIVA
+   SYNC: walkNodes, walkInterpAuto, buildLgBlock, buildLgHtml
+         — identici a ed_diplomatica.html v7.2 (senza facsimile nav)
+═══════════════════════════════════════════════════════ */
+function walkNodes(nodeList, handlers) {
+  let result = '';
+  Array.from(nodeList).forEach(node => {
+    if (node.nodeType === 3) {
+      result += handlers.text ? handlers.text(node) : '';
+    } else if (node.nodeType === 1) {
+      const tag = node.localName;
+      const fn  = handlers[tag] || handlers.default;
+      if (fn) result += fn(node) || '';
+    }
+  });
+  return result;
+}
+
+function walkInterpAuto(node) {
+  return walkNodes(node.childNodes, {
+    text:     t => {
+      let s = t.textContent;
+      if (walkState.lastLbWasBreakNo) { walkState.lastLbWasBreakNo = false; s = s.replace(/^\s+/, ''); }
+      return smartQuotes(s);
+    },
+    choice:   n => {
+      const expan = directChild(n, "expan");
+      if (expan) return walkInterpAuto(expan);
+      const reg  = directChild(n, "reg");
+      if (reg)   return walkInterpAuto(reg);
+      const corr = directChild(n, "corr");
+      if (corr)  return smartQuotes(corr.textContent);
+      return smartQuotes(n.textContent);
+    },
+    abbr:     n => smartQuotes(n.textContent),
+    add:      n => smartQuotes(n.textContent),
+    del:      () => "",
+    subst:    n => { const a = directChild(n, 'add'); return a ? walkInterpAuto(a) : ''; },
+    damage:   n => `<span class="tei-damage" title="Danno materiale">†${smartQuotes(n.textContent)}†</span>`,
+    unclear:  n => `<span class="tei-unclear" title="Lettura incerta">†${smartQuotes(n.textContent)}†</span>`,
+    supplied: n => `<span class="tei-supplied" title="Integrazione editoriale">⟨${smartQuotes(n.textContent)}⟩</span>`,
+    seg:      n => {
+      const sid = n.getAttribute('xml:id');
+      if (sid) {
+        const ni  = noteIndexMap[sid] || "";
+        const txt = walkInterpAuto(n);          // testo interno (può essere vuoto)
+        const sup = ni ? `<sup class="note-marker" data-seg-id="${sid}" data-seg-has-text="${txt ? '1' : '0'}">${ni}</sup>` : "";
+        return txt + sup;
+      }
+      return walkInterpAuto(n);
+    },
+    note:     () => "",
+    milestone:() => "",
+    lg:       n => {
+      const prefix = (!walkState.firstLbAfterPb)
+        ? `<span class="lb-marker"> | </span>` : '';
+      let h = buildLgBlock(n);
+      const nextSib = n.nextElementSibling;
+      if (nextSib && nextSib.localName === 'lb' && nextSib.getAttribute('break') !== 'no') {
+        const marker = `<span class="lb-marker"> | </span>`;
+        h = h.replace(/<\/div><\/div>$/, marker + '</div></div>');
+        walkState.firstLbAfterLg = true;
+      } else {
+        walkState.firstLbAfterLg = false;
+      }
+      return prefix + h;
+    },
+    ab:       n => walkInterpAuto(n),
+    pb:       n => {
+      const facs = (n.getAttribute('facs')||'').replace('#','');
+      walkState.currentSurface = facs;
+      walkState.showSurfaceLabel = true;
+      walkState.firstLbAfterPb = true;
+      walkState._pendingPbForProse = facs;
+      return '';
+    },
+    lb:       n => {
+      const isFirst = walkState.firstLbAfterPb || walkState.firstLbAfterLg;
+      walkState.firstLbAfterPb = false;
+      walkState.firstLbAfterLg = false;
+      const lbN  = n.getAttribute('n') || '';
+      const facs = (n.getAttribute('facs') || '').replace('#','') || walkState.currentSurface;
+      const lbl  = facs ? facs.replace(/^[^_]*_/, 'f.') : '';
+      const showLabel = walkState.showSurfaceLabel && facs;
+      if (showLabel) walkState.showSurfaceLabel = false;
+      const facsSpan = showLabel && lbl
+        ? `<span class="lb-facs" title="c. ${lbl}">${lbl}</span>` : '';
+      if (isFirst) return `<span class="lb-open" data-lb-n="${lbN}"></span>${facsSpan}`;
+      if (n.getAttribute('break') === 'no') {
+        walkState.lastLbWasBreakNo = true;
+        return `<span class="lb-marker-tight" data-lb-n="${lbN}" data-lb-break="no" style="font-size:0.8em;color:var(--muted)">|</span>${facsSpan}`;
+      }
+      walkState.lastLbWasBreakNo = false;
+      return `<span class="lb-marker" data-lb-n="${lbN}"> | </span>${facsSpan}`;
+    },
+    hi:       n => {
+      const r = n.getAttribute('rend') || '';
+      const t = walkInterpAuto(n);
+      return r === 'italic' ? `<em>${t}</em>` : r === 'bold' ? `<strong>${t}</strong>` : t;
+    },
+    p:        n => {
+      if (!window._interpProseSegs) window._interpProseSegs = [];
+      const openingLb = Array.from(n.childNodes).find(c => c.nodeType===1 && c.localName==='lb');
+      window._interpProseSegs.push({
+        pbBefore:  walkState._pendingPbForProse || null,
+        openingLb: openingLb ? openingLb.getAttribute('n') : null
+      });
+      walkState._pendingPbForProse = null;
+      return `<p>${walkInterpAuto(n)}</p>`;
+    },
+    default:  n => smartQuotes(n.textContent),
+  });
+}
+
+function buildLgBlock(lgNode) {
+  const savedState = {
+    currentSurface: walkState.currentSurface,
+    showSurfaceLabel: walkState.showSurfaceLabel
+  };
+  let segments = [];
+  let currentText = '';
+  let firstLbInLg = true;
+  let lgBreakNoFlag = false;
+
+  function walkLg(node) {
+    if (node.nodeType === 3) {
+      let t = smartQuotes(node.textContent);
+      if (lgBreakNoFlag) { lgBreakNoFlag = false; t = t.replace(/^\s+/, ''); }
+      currentText += t;
+      return;
+    }
+    const tag = node.localName;
+    if (tag === 'milestone' && node.getAttribute('unit') === 'verse') {
+      segments.push(currentText.trimEnd());
+      currentText = '';
+      return;
+    }
+    if (tag === 'pb') {
+      walkState.currentSurface = (node.getAttribute('facs')||'').replace('#','');
+      walkState.showSurfaceLabel = true;
+      return;
+    }
+    if (tag === 'lb') {
+      const facs = (node.getAttribute('facs') || '').replace('#','') || walkState.currentSurface;
+      const lbl  = facs ? facs.replace(/^[^_]*_/, 'f.') : '';
+      const showLabel = walkState.showSurfaceLabel && facs;
+      if (showLabel) {
+        walkState.showSurfaceLabel = false;
+        currentText += `<span class="lb-facs" title="c. ${lbl}">${lbl}</span>`;
+      }
+      if (firstLbInLg || walkState.firstLbAfterPb) {
+        firstLbInLg = false;
+        walkState.firstLbAfterPb = false;
+        return;
+      }
+      firstLbInLg = false;
+      if (node.getAttribute('break') === 'no') {
+        const lbN = node.getAttribute('n') || '';
+        lgBreakNoFlag = true;
+        currentText += `<span class="lb-marker-tight" data-lb-n="${lbN}" data-lb-break="no" style="font-size:0.8em;color:var(--muted)">|</span>`;
+        return;
+      }
+      const marker = `<span class="lb-marker"> | </span>`;
+      if (currentText.trim() === '' && segments.length > 0) {
+        segments[segments.length - 1] = segments[segments.length - 1].trimEnd() + marker;
+      } else {
+        currentText += marker;
+      }
+      return;
+    }
+    if (tag === 'choice') {
+      const expan = directChild(node, "expan");
+      if (expan) { Array.from(expan.childNodes).forEach(walkLg); return; }
+      const reg = directChild(node, "reg");
+      if (reg)   { Array.from(reg.childNodes).forEach(c => walkLg(c)); return; }
+      currentText += smartQuotes(node.textContent); return;
+    }
+    if (tag === 'note') return;
+    if (tag === 'del')  return;
+    if (tag === 'subst') { const a = directChild(node, 'add'); if (a) Array.from(a.childNodes).forEach(walkLg); return; }
+    if (tag === 'add')   { Array.from(node.childNodes).forEach(walkLg); return; }
+    if (tag === 'seg') {
+      const sid = node.getAttribute('xml:id');
+      if (sid) {
+        const ni = noteIndexMap[sid] || "";
+        // Testo interno (può essere vuoto — seg usato come punto-ancora)
+        Array.from(node.childNodes).forEach(walkLg);
+        if (ni) currentText += `<sup class="note-marker" data-seg-id="${sid}" data-seg-has-text="${node.textContent ? '1' : '0'}">${ni}</sup>`;
+      } else {
+        Array.from(node.childNodes).forEach(walkLg);
+      }
+      return;
+    }
+    if (tag === 'damage')  { currentText += `<span class="tei-damage">†${smartQuotes(node.textContent)}†</span>`; return; }
+    if (tag === 'unclear') { currentText += `<span class="tei-unclear">†${smartQuotes(node.textContent)}†</span>`; return; }
+    if (tag === 'supplied'){ currentText += `<span class="tei-supplied">⟨${smartQuotes(node.textContent)}⟩</span>`; return; }
+    if (tag === 'hi') {
+      const r = node.getAttribute('rend');
+      if (r === 'italic') { currentText += `<em>${smartQuotes(node.textContent)}</em>`; return; }
+      if (r === 'bold')   { currentText += `<strong>${smartQuotes(node.textContent)}</strong>`; return; }
+      currentText += smartQuotes(node.textContent); return;
+    }
+    if (node.nodeType === 1) Array.from(node.childNodes).forEach(walkLg);
+  }
+
+  Array.from(lgNode.childNodes).forEach(walkLg);
+  if (currentText.trim()) segments.push(currentText.trim());
+
+  walkState.currentSurface   = savedState.currentSurface;
+  walkState.showSurfaceLabel = savedState.showSurfaceLabel;
+
+  if (!segments.length) return '';
+  let h = '<div class="tei-lg" style="margin:0.8em 0 0.8em 2em;">';
+  segments.forEach((seg, i) => {
+    if (seg) h += `<div class="tei-l" style="display:flex;gap:1.2em;align-items:baseline;">
+      <span style="font-size:0.7em;font-family:'Source Sans 3',sans-serif;color:var(--muted);min-width:1.5em;text-align:right;">${i+1}</span>
+      <span>${seg}</span></div>`;
+  });
+  h += '</div>';
+  return h;
+}
+
+function buildLgHtml(div, walkFn) {
+  let html = '';
+  Array.from(div.childNodes).forEach(node => {
+    if (node.nodeType === 3) {
+      const t = node.textContent.trim();
+      if (t) html += smartQuotes(t);
+    } else if (node.nodeType === 1) {
+      const tag = node.localName;
+      if (tag === 'note') {
+        // <note> è fratello di <p> nel <div>: va soppresso qui;
+        // viene gestito separatamente da buildDiplomaticNotes/editorToTei
+      } else if (tag === 'pb') {
+        // <pb> tra paragrafi: aggiorna walkState così il prossimo <lb>
+        // mostrerà l'etichetta di carta via lb-facs
+        const facs = (node.getAttribute('facs')||'').replace('#','');
+        walkState.currentSurface     = facs;
+        walkState.showSurfaceLabel   = true;
+        walkState.firstLbAfterPb     = true;
+        walkState._pendingPbForProse = facs;
+      } else if (tag === 'p') html += `<p>${walkFn(node)}</p>`;
+      else if (tag === 'ab') html += walkFn(node);
+      else html += walkFn(node) || '';
+    }
+  });
+  return html;
+}
+
+/* ═══════════════════════════════════════════════════════
+   WALKER VERSI (tutto-versi)
+   SYNC: buildInterpAutoWithMilestones — adattato da ed_diplomatica.html v7.2
+         con supporto toggle <lb> e <pb>
+═══════════════════════════════════════════════════════ */
+function buildInterpAutoWithMilestones(diplDiv) {
+  const milestones = Array.from(diplDiv.getElementsByTagNameNS(NS,"milestone"))
+    .filter(m => m.getAttribute("unit") === "verse");
+  if (!milestones.length) return null;
+
+  let segments = [];
+  let currentHtml = '';
+  let currentText = '';
+  let currentLbN  = null;
+  let pendingPb   = null;
+  let pbAfterSeg  = null;   // <pb> da emettere TRA l'<l> corrente e il successivo
+  let extraLbs    = [];
+  let firstLbInBlock = true;
+  let firstLbAfterMilestone = false;
+  let openingPb   = null;
+  let breakNoFlag = false;
+
+  function pushSeg() {
+    // Salta segmenti completamente vuoti — accade quando un <milestone>
+    // è il primo figlio del container, prima di qualsiasi testo o <lb>
+    if (!currentHtml.trim() && pendingPb === null && pbAfterSeg === null && extraLbs.length === 0) {
+      currentLbN = null;
+      firstLbAfterMilestone = true;
+      return;
+    }
+    segments.push({
+      html:     currentHtml.trimEnd(),
+      text:     currentText.trimEnd(),
+      lbN:      currentLbN,
+      pbBefore: pendingPb,
+      pbAfter:  pbAfterSeg,   // <pb> fratello da emettere dopo questo <l>
+      extraLbs: extraLbs.slice()
+    });
+    currentHtml  = '';
+    currentText  = '';
+    currentLbN   = null;
+    pendingPb    = null;
+    pbAfterSeg   = null;
+    extraLbs     = [];
+    firstLbAfterMilestone = true;
+  }
+
+  function walkForMilestone(node) {
+    if (node.nodeType === 3) {
+      let raw = node.textContent;
+      if (breakNoFlag) { breakNoFlag = false; raw = raw.replace(/^\s+/, ''); }
+      const t = smartQuotes(raw);
+      currentHtml += t;
+      currentText += raw;
+      return;
+    }
+    const tag = node.localName;
+
+    if (tag === 'milestone' && node.getAttribute('unit') === 'verse') {
+      pushSeg();
+      return;
+    }
+
+    if (tag === 'pb') {
+      const facs = (node.getAttribute('facs')||'').replace('#','');
+      walkState.currentSurface   = facs;
+      walkState.showSurfaceLabel = true;
+      walkState.firstLbAfterPb   = true;
+      if (firstLbInBlock && segments.length === 0 && !currentHtml.trim()) {
+        // <pb> prima di qualsiasi testo → pb di apertura
+        openingPb = facs;
+      } else if (midVersePbs.has(node)) {
+        // <pb> dentro un verso (seguito da lb break="no") → marker visivo nel segmento
+        const lbl = facs.replace(/^[^_]*_/, 'f.');
+        currentHtml += `<span class="pb-inline-marker" data-pb-facs="${facs}" style="font-size:0.7em;color:var(--accent);font-weight:700;">[${lbl}]</span>`;
+        pbAfterSeg = facs;
+      } else if (currentHtml.trim()) {
+        // <pb> tra versi con testo accumulato → chiudi il verso corrente
+        pushSeg();
+        pendingPb = facs;
+      } else {
+        // <pb> tra versi senza testo accumulato
+        pendingPb = facs;
+      }
+      return;
+    }
+
+    if (tag === 'lb') {
+      const n = node.getAttribute('n') || '';
+      const facs = (node.getAttribute('facs') || '').replace('#','') || walkState.currentSurface;
+      const lbl  = facs ? facs.replace(/^[^_]*_/, 'f.') : '';
+      const showLabel = walkState.showSurfaceLabel && facs;
+      if (showLabel) {
+        walkState.showSurfaceLabel = false;
+        currentHtml += `<span class="lb-facs" title="c. ${lbl}">${lbl}</span>`;
+      }
+      if (firstLbInBlock || walkState.firstLbAfterPb || firstLbAfterMilestone) {
+        firstLbInBlock = false;
+        walkState.firstLbAfterPb = false;
+        firstLbAfterMilestone = false;
+        if (currentLbN === null && n) currentLbN = parseInt(n) || null;
+        return;
+      }
+      firstLbInBlock = false;
+      firstLbAfterMilestone = false;
+
+      if (node.getAttribute('break') === 'no') {
+        breakNoFlag = true;
+        currentHtml += `<span class="lb-marker-tight" data-lb-n="${n}" data-lb-break="no" style="font-size:0.8em;color:var(--muted)">|</span>`;
+        return;
+      }
+      if (n) extraLbs.push({ n: parseInt(n), afterText: currentText.trimEnd() });
+      const marker = `<span class="lb-marker" data-lb-n="${n}"> | </span>`;
+      if (currentHtml.trim() === '' && segments.length > 0) {
+        segments[segments.length-1].html = segments[segments.length-1].html.trimEnd() + marker;
+      } else {
+        currentHtml += marker;
+      }
+      return;
+    }
+
+    if (tag === 'choice') {
+      const expan = directChild(node, "expan");
+      if (expan) { Array.from(expan.childNodes).forEach(walkForMilestone); return; }
+      const reg = directChild(node, "reg");
+      if (reg)   { Array.from(reg.childNodes).forEach(c => walkForMilestone(c)); return; }
+      const corr = directChild(node, "corr");
+      if (corr) { currentHtml += smartQuotes(corr.textContent); currentText += corr.textContent; return; }
+      currentHtml += smartQuotes(node.textContent); currentText += node.textContent; return;
+    }
+    if (tag === 'note') return;
+    if (tag === 'seg') {
+      const sid = node.getAttribute('xml:id');
+      if (sid) {
+        const ni = noteIndexMap[sid] || "";
+        // Testo interno prima del marker (seg può essere vuoto)
+        Array.from(node.childNodes).forEach(walkForMilestone);
+        if (ni) currentHtml += `<sup class="note-marker" data-seg-id="${sid}" data-seg-has-text="${node.textContent ? '1' : '0'}">${ni}</sup>`;
+      } else {
+        currentHtml += smartQuotes(node.textContent);
+        currentText += node.textContent;
+      }
+      return;
+    }
+    if (tag === 'del') return;
+    if (tag === 'subst') { const a = directChild(node, 'add'); if (a) Array.from(a.childNodes).forEach(walkForMilestone); return; }
+    if (tag === 'add')   { Array.from(node.childNodes).forEach(walkForMilestone); return; }
+    if (tag === 'damage')  { const t = node.textContent; currentHtml += `<span class="tei-damage">†${smartQuotes(t)}†</span>`; currentText += t; return; }
+    if (tag === 'unclear') { const t = node.textContent; currentHtml += `<span class="tei-unclear">†${smartQuotes(t)}†</span>`; currentText += t; return; }
+    if (tag === 'supplied'){ const t = node.textContent; currentHtml += `<span class="tei-supplied">⟨${smartQuotes(t)}⟩</span>`; currentText += t; return; }
+    if (tag === 'hi') {
+      const r = node.getAttribute('rend');
+      if (r === 'italic') {
+        const before = currentHtml;
+        Array.from(node.childNodes).forEach(walkForMilestone);
+        const delta = currentHtml.slice(before.length);
+        currentHtml = before + `<em>${delta}</em>`;
+        return;
+      }
+      if (r === 'bold') {
+        const before = currentHtml;
+        Array.from(node.childNodes).forEach(walkForMilestone);
+        const delta = currentHtml.slice(before.length);
+        currentHtml = before + `<strong>${delta}</strong>`;
+        return;
+      }
+      Array.from(node.childNodes).forEach(walkForMilestone);
+      return;
+    }
+    if (node.nodeType === 1) Array.from(node.childNodes).forEach(walkForMilestone);
+  }
+
+  const container = diplDiv.getElementsByTagNameNS(NS,"ab")[0] ||
+                    diplDiv.getElementsByTagNameNS(NS,"p")[0]  || diplDiv;
+
+  // Pre-scan: individua i <pb> che sono DENTRO un verso (seguiti da <lb break="no">)
+  // vs quelli che sono TRA versi (seguiti da <lb> normale o <milestone>).
+  // Un <pb> mid-verso va tenuto nel segmento corrente; uno tra versi chiude il segmento.
+  const midVersePbs = new Set();
+  const containerChildren = Array.from(container.childNodes);
+  containerChildren.forEach((node, i) => {
+    if (node.nodeType === 1 && node.localName === 'pb') {
+      for (let j = i + 1; j < containerChildren.length; j++) {
+        const next = containerChildren[j];
+        if (next.nodeType === 3 && !next.textContent.trim()) continue; // whitespace
+        if (next.nodeType === 1 && next.localName === 'lb' &&
+            next.getAttribute('break') === 'no') {
+          midVersePbs.add(node); // <pb> mid-verso
+        }
+        break;
+      }
+    }
+  });
+
+  containerChildren.forEach(walkForMilestone);
+  if (currentHtml.trim()) pushSeg();
+  if (!segments.length) return null;
+
+  let h = '';
+  if (openingPb) {
+    const lbl = openingPb.replace(/^[^_]*_/, 'f.');
+    h += `<div class="pb-label" style="font-size:0.75em;font-family:'Source Sans 3',sans-serif;color:var(--accent);font-weight:700;margin-bottom:4px;">[${lbl}]</div>`;
+  }
+  h += '<div class="tei-lg" style="margin:0.5em 0;">';
+  segments.forEach((seg, i) => {
+    if (seg.pbBefore) {
+      const lbl = seg.pbBefore.replace(/^[^_]*_/, 'f.');
+      h += `<div class="pb-label" style="font-size:0.75em;font-family:'Source Sans 3',sans-serif;color:var(--accent);font-weight:700;margin:4px 0;">[${lbl}]</div>`;
+    }
+    const txt = seg.html
+      .replace(/\x02(\d+)\x02/g, '')
+      .replace(/\x01([^\x01]+)\x01/g, '');
+    h += `<div class="tei-l" style="display:flex;gap:1.2em;align-items:baseline;">
+      <span style="font-size:0.7em;font-family:'Source Sans 3',sans-serif;color:var(--muted);min-width:1.5em;text-align:right;">${i+1}</span>
+      <span>${txt}</span></div>`;
+  });
+  h += '</div>';
+  return { html: h, segments, openingPb };
+}
+
+/* ═══════════════════════════════════════════════════════
+   GESTIONE NOTE
+═══════════════════════════════════════════════════════ */
+
+/**
+ * Estrae testo plain da un nodo <note> TEI.
+ * Usato solo per il confronto / fallback.
+ */
+function extractNoteText(node) {
+  let out = '';
+  Array.from(node.childNodes).forEach(c => {
+    if (c.nodeType === 3) out += c.textContent;
+    else if (c.nodeType === 1) out += extractNoteText(c);
+  });
+  return out;
+}
+
+/**
+ * Converte un nodo <note> TEI in HTML per il contenteditable:
+ * <hi rend="italic"> → <em>, <hi rend="bold"> → <strong>.
+ * Entità già decodificate dal DOMParser.
+ */
+function extractNoteHtml(node) {
+  let out = '';
+  Array.from(node.childNodes).forEach(c => {
+    if (c.nodeType === 3) {
+      out += c.textContent
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    } else if (c.nodeType === 1) {
+      if (c.localName === 'hi') {
+        const rend = c.getAttribute('rend') || '';
+        const inner = extractNoteHtml(c);
+        if (rend === 'italic') out += `<em>${inner}</em>`;
+        else if (rend === 'bold') out += `<strong>${inner}</strong>`;
+        else out += inner;
+      } else {
+        out += extractNoteHtml(c);
+      }
+    }
+  });
+  return out;
+}
+
+/**
+ * Serializza il contenuto di un nodo HTML (contenteditable) in XML TEI:
+ * <em> → <hi rend="italic">, <strong> → <hi rend="bold">.
+ */
+function serializeNoteDivToTei(node) {
+  let out = '';
+  Array.from(node.childNodes).forEach(c => {
+    if (c.nodeType === 3) {
+      out += c.textContent
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    } else if (c.nodeType === 1) {
+      const tag = c.localName;
+      const style = c.getAttribute ? (c.getAttribute('style') || '') : '';
+      const isItalic = tag === 'em' || tag === 'i' ||
+                       (tag === 'span' && style.includes('italic'));
+      const isBold   = tag === 'strong' || tag === 'b' ||
+                       (tag === 'span' && (style.includes('bold') || style.includes('700')));
+      if (isItalic)  out += `<hi rend="italic">${serializeNoteDivToTei(c)}</hi>`;
+      else if (isBold)    out += `<hi rend="bold">${serializeNoteDivToTei(c)}</hi>`;
+      else if (tag === 'br') out += ' ';
+      else out += serializeNoteDivToTei(c);
+    }
+  });
+  return out;
+}
+
+/**
+ * Produce il contenuto TEI di una nota per l'export:
+ * - note non modificate dalla diplomatica → usa noteXmlMap (XML originale intatto)
+ * - note modificate o nuove → serializza il div contenteditable
+ */
+function serializeNoteForExport(sid) {
+  if (!noteIsNew[sid] && !noteModifiedMap[sid] && noteXmlMap[sid] !== undefined) {
+    return noteXmlMap[sid];
+  }
+  // Nota nuova o modificata: serializza da HTML del contenteditable
+  const html = noteContentMap[sid] || '';
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return serializeNoteDivToTei(tmp);
+}
+
+/**
+ * Serializza il contenuto di un nodo <note> TEI in XML,
+ * preservando <hi rend="..."> e le entità.
+ * Usato per conservare il markup delle note dalla diplomatica.
+ */
+function extractNoteXml(node) {
+  let out = '';
+  Array.from(node.childNodes).forEach(c => {
+    if (c.nodeType === 3) {
+      out += c.textContent
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } else if (c.nodeType === 1) {
+      if (c.localName === 'hi') {
+        const rend  = c.getAttribute('rend') || '';
+        const inner = extractNoteXml(c);
+        out += rend ? `<hi rend="${rend}">${inner}</hi>` : `<hi>${inner}</hi>`;
+      } else {
+        out += extractNoteXml(c);
+      }
+    }
+  });
+  return out;
+}
+
+/**
+ * Costruisce noteIndexMap, noteContentMap, noteIsNew, noteOrder
+ * dalle <note> della diplomatica.
+ * Chiamata da convert() prima di renderizzare l'interpretativa.
+ */
+function buildDiplomaticNotes(diplDiv) {
+  noteIndexMap    = {};
+  noteContentMap  = {};
+  noteXmlMap      = {};
+  noteModifiedMap = {};
+  noteIsNew       = {};
+  noteOrder       = [];
+  newNoteCounter  = 0;
+
+  const notes   = Array.from(diplDiv.getElementsByTagNameNS(NS, 'note'));
+  const segs    = Array.from(diplDiv.getElementsByTagNameNS(NS, 'seg'));
+  const noteByTarget = {};
+  notes.forEach(n => {
+    const target = (n.getAttribute('target') || '').replace('#', '');
+    if (target) noteByTarget[target] = { html: extractNoteHtml(n), xml: extractNoteXml(n) };
+  });
+  const targets = new Set(Object.keys(noteByTarget));
+  let counter = 0;
+  segs.forEach(s => {
+    const sid = s.getAttribute('xml:id') || '';
+    if (sid && targets.has(sid)) {
+      counter++;
+      noteIndexMap[sid]    = counter;
+      noteContentMap[sid]  = noteByTarget[sid].html || '';
+      noteXmlMap[sid]      = noteByTarget[sid].xml  || '';
+      noteModifiedMap[sid] = false;
+      noteIsNew[sid]       = false;
+      noteOrder.push(sid);
+    }
+  });
+}
+
+/**
+ * Ricalcola la numerazione di tutti i marker nel DOM
+ * e aggiorna noteIndexMap e noteOrder in ordine di apparizione.
+ * Da chiamare dopo ogni inserimento o eliminazione di marker.
+ */
+function recalculateNoteNumbers() {
+  const editor  = document.getElementById('interp-editor');
+  const markers = Array.from(editor.querySelectorAll('sup.note-marker'));
+  noteIndexMap = {};
+  noteOrder    = [];
+  let counter  = 0;
+  markers.forEach(sup => {
+    const sid = sup.getAttribute('data-seg-id');
+    if (sid) {
+      counter++;
+      noteIndexMap[sid] = counter;
+      noteOrder.push(sid);
+      sup.textContent = counter;
+    }
+  });
+}
+
+/**
+ * Inserisce un marker di nota al punto del cursore (o fine selezione).
+ * Se non c'è selezione usa un <seg/> vuoto; se c'è selezione
+ * il marker va dopo il testo selezionato (il testo resta invariato).
+ */
+function addNote() {
+  const editor = document.getElementById('interp-editor');
+  if (!editor.textContent && !editor.innerHTML) {
+    showMsg('Genera prima l\'interpretativa nel pannello sinistro.');
+    return;
+  }
+  editor.focus();
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) { showMsg('Posiziona il cursore nel testo.'); return; }
+
+  newNoteCounter++;
+  const sid = `s_interp_${newNoteCounter}`;
+
+  const range = sel.getRangeAt(0);
+  range.collapse(false); // inserisci dopo la selezione (o al cursore)
+
+  const sup = document.createElement('sup');
+  sup.className = 'note-marker';
+  sup.setAttribute('data-seg-id', sid);
+  sup.setAttribute('data-note-new', 'true');
+  sup.textContent = '?'; // temporaneo, recalculate lo sostituisce
+
+  range.insertNode(sup);
+
+  // Sposta il cursore subito dopo il marker
+  const newRange = document.createRange();
+  newRange.setStartAfter(sup);
+  newRange.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(newRange);
+
+  // Registra la nota
+  noteContentMap[sid] = '';
+  noteIsNew[sid]      = true;
+
+  recalculateNoteNumbers();
+  openNoteDrawer(sid);
+  updateWordCount();
+}
+
+/** Versione chiamata dal context menu: ripristina la selezione salvata. */
+function addNoteFromCtxMenu() {
+  hideCtxMenu();
+  if (savedRange) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+    savedRange = null;
+  }
+  addNote();
+}
+
+/** Apre il cassetto per la nota indicata. */
+function openNoteDrawer(sid) {
+  // Salva contenuto della nota attiva se diversa
+  if (activeNoteId && activeNoteId !== sid) {
+    const nd = document.getElementById('note-editor');
+    if (nd) noteContentMap[activeNoteId] = nd.innerHTML;
+  }
+  // Togli highlight precedente
+  document.querySelectorAll('#interp-editor sup.note-marker.nd-active')
+    .forEach(el => el.classList.remove('nd-active'));
+  // Highlight marker attivo
+  const marker = document.querySelector(`#interp-editor sup.note-marker[data-seg-id="${sid}"]`);
+  if (marker) marker.classList.add('nd-active');
+
+  activeNoteId = sid;
+  renderNoteDrawer();
+  document.getElementById('note-drawer').classList.add('open');
+  setTimeout(() => document.getElementById('note-editor').focus(), 40);
+}
+
+/** Chiude il cassetto e deseleziona il marker. */
+function closeNoteDrawer() {
+  if (activeNoteId) {
+    const nd = document.getElementById('note-editor');
+    if (nd) noteContentMap[activeNoteId] = nd.innerHTML;
+  }
+  document.querySelectorAll('#interp-editor sup.note-marker.nd-active')
+    .forEach(el => el.classList.remove('nd-active'));
+  activeNoteId = null;
+  document.getElementById('note-drawer').classList.remove('open');
+}
+
+/** Aggiorna il contenuto del cassetto in base ad activeNoteId. */
+function renderNoteDrawer() {
+  if (!activeNoteId) return;
+  const idx   = noteOrder.indexOf(activeNoteId);
+  const num   = noteIndexMap[activeNoteId] || '';
+  const isNew = !!noteIsNew[activeNoteId];
+  const total = noteOrder.length;
+
+  document.getElementById('nd-num').textContent  = num;
+  const lbl = document.getElementById('nd-label');
+  lbl.textContent = isNew ? 'nuova' : 'dalla diplomatica';
+  lbl.className   = 'nd-label' + (isNew ? ' new' : '');
+  document.getElementById('note-editor').innerHTML = noteContentMap[activeNoteId] || '';
+  document.getElementById('nd-nav').textContent  = `${idx + 1} / ${total}`;
+  document.getElementById('nd-delete').style.display = isNew ? 'inline-block' : 'none';
+}
+
+/** Naviga alla nota precedente (dir=-1) o successiva (dir=+1). */
+function navigateNote(dir) {
+  if (!activeNoteId) return;
+  noteContentMap[activeNoteId] = document.getElementById('note-editor').innerHTML;
+  const idx    = noteOrder.indexOf(activeNoteId);
+  const newIdx = idx + dir;
+  if (newIdx >= 0 && newIdx < noteOrder.length) {
+    openNoteDrawer(noteOrder[newIdx]);
+  }
+}
+
+/** Elimina la nota attiva (solo note nuove). */
+function deleteNote() {
+  if (!activeNoteId || !noteIsNew[activeNoteId]) return;
+  const sid = activeNoteId;
+  // Rimuovi marker dal DOM
+  const marker = document.querySelector(`#interp-editor sup.note-marker[data-seg-id="${sid}"]`);
+  if (marker) marker.remove();
+  // Rimuovi dai registri
+  delete noteContentMap[sid];
+  delete noteXmlMap[sid];
+  delete noteModifiedMap[sid];
+  delete noteIsNew[sid];
+  newNoteCounter = Math.max(0, newNoteCounter - 1);
+  recalculateNoteNumbers();
+  // Chiudi o vai alla nota adiacente
+  if (noteOrder.length > 0) {
+    // noteOrder è già aggiornato da recalculate
+    const nextId = noteOrder[Math.min(noteOrder.indexOf(sid), noteOrder.length - 1)];
+    if (nextId && nextId !== sid) { openNoteDrawer(nextId); return; }
+  }
+  closeNoteDrawer();
+  updateWordCount();
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONTEXT MENU
+═══════════════════════════════════════════════════════ */
+function hideCtxMenu() {
+  document.getElementById('ctx-menu').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════════
+   CARICAMENTO INTERPRETATIVA GIÀ FORMATA
+   Legge un <div type="interpretative"> e popola il pannello
+   destro mantenendo struttura e collegamento alle note,
+   per modifica delle sole note. Funzione completamente
+   indipendente dai walker diplomatici: nessun side-effect.
+═══════════════════════════════════════════════════════ */
+function loadInterpretative(interpDiv) {
+  closeNoteDrawer();
+
+  // Reset stato walker (allinea ai reset di convert())
+  walkState.currentSurface      = '';
+  walkState.showSurfaceLabel    = false;
+  walkState.firstLbAfterPb      = false;
+  walkState.firstLbAfterLg      = false;
+  walkState._pendingPbForProse  = null;
+  walkState.lastLbWasBreakNo    = false;
+  zoneIndex    = {};
+  surfaceIndex = {};
+
+  // _interpSegments deliberatamente NULL: l'export userà il fallback su
+  // attributi data-l-* per pb tra versi. _interpProseSegs viene popolato
+  // normalmente per la prosa (stesso meccanismo del path esistente).
+  window._interpSegments    = null;
+  window._interpOpeningPb   = null;
+  window._interpProseSegs   = [];
+  window._interpProseSegIdx = 0;
+
+  // Mappe note: la stessa funzione cerca <note target> e <seg xml:id>
+  // indipendentemente dal tipo di <div>.
+  buildDiplomaticNotes(interpDiv);
+
+  // Attiva automaticamente i toggle se il sorgente contiene <lb> / <pb>,
+  // altrimenti il riesporto perderebbe l'info. Solo accensione, mai
+  // spegnimento — l'utente può sempre disattivarli manualmente.
+  const hasLb = interpDiv.getElementsByTagNameNS(NS, 'lb').length > 0;
+  const hasPb = interpDiv.getElementsByTagNameNS(NS, 'pb').length > 0;
+  if (hasLb && !transferLb) toggleTransferLb();
+  if (hasPb && !transferPb) toggleTransferPb();
+
+  /* ─── Walker per il contenuto inline di un <l> o <p> ─── */
+  // Se skipOpeningLb=true salta il primo <lb> figlio diretto (che è
+  // l'lb di apertura del verso/paragrafo, reso come lb-open invisibile
+  // a parte). Tutti gli altri <lb> diventano marker visibili.
+  function walkInline(parent, skipOpeningLb) {
+    let html = '';
+    let openingLbConsumed = !skipOpeningLb;
+    Array.from(parent.childNodes).forEach(node => {
+      if (node.nodeType === 3) {
+        html += smartQuotes(node.textContent);
+        return;
+      }
+      if (node.nodeType !== 1) return;
+      const tag = node.localName;
+      if (tag === 'lb') {
+        const n = node.getAttribute('n') || '';
+        if (!openingLbConsumed) {
+          // lb di apertura: invisibile ma serializzabile via classe lb-open
+          openingLbConsumed = true;
+          html += `<span class="lb-open" data-lb-n="${escAttr(n)}"></span>`;
+          return;
+        }
+        if (node.getAttribute('break') === 'no') {
+          html += `<span class="lb-marker-tight" data-lb-n="${escAttr(n)}" data-lb-break="no" style="font-size:0.8em;color:var(--muted)">|</span>`;
+        } else {
+          html += `<span class="lb-marker" data-lb-n="${escAttr(n)}"> | </span>`;
+        }
+        return;
+      }
+      if (tag === 'pb') {
+        // <pb> dentro <l> o <p>: marker visivo. NOTA: in export delle .tei-l
+        // il pb-inline-marker viene rimosso dal clone → i pb mid-verso non
+        // vengono riesportati (limitazione documentata). Per i pb mid-prosa,
+        // sopravvivono perché <p> non rimuove pb-inline-marker.
+        const facs = (node.getAttribute('facs')||'').replace('#','');
+        const lbl  = facs.replace(/^[^_]*_/, 'f.');
+        html += `<span class="pb-inline-marker" data-pb-facs="${escAttr(facs)}" style="font-size:0.7em;color:var(--accent);font-weight:700;">[${lbl}]</span>`;
+        return;
+      }
+      if (tag === 'seg') {
+        const sid     = node.getAttribute('xml:id') || '';
+        const inner   = walkInline(node, false);  // testo interno (può essere vuoto)
+        const ni      = sid ? (noteIndexMap[sid] || '') : '';
+        const hasText = node.textContent ? '1' : '0';
+        html += inner;
+        if (sid && ni) {
+          html += `<sup class="note-marker" data-seg-id="${escAttr(sid)}" data-seg-has-text="${hasText}">${ni}</sup>`;
+        }
+        return;
+      }
+      if (tag === 'hi') {
+        const r     = node.getAttribute('rend');
+        const inner = walkInline(node, false);
+        if (r === 'italic')      html += `<em>${inner}</em>`;
+        else if (r === 'bold')   html += `<strong>${inner}</strong>`;
+        else                     html += inner;
+        return;
+      }
+      if (tag === 'note') return;  // gestite separatamente
+      // Default: ricorri (cattura eventuali wrapper non previsti come <choice>, <add>, etc.)
+      // Per un'interpretativa "pulita" generata da questo tool questo path non si attiva.
+      html += walkInline(node, false);
+    });
+    return html;
+  }
+
+  function escAttr(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  /* ─── Itera i blocchi figli del <div> ─── */
+  let pendingPbForBlock = null;  // <pb> da assegnare al prossimo blocco
+  let html = '';
+
+  Array.from(interpDiv.childNodes).forEach(node => {
+    if (node.nodeType !== 1) return;
+    const tag = node.localName;
+
+    if (tag === 'note') return;  // gestite separatamente da buildDiplomaticNotes
+
+    if (tag === 'pb') {
+      // <pb> figlio diretto del <div>: tra blocchi
+      pendingPbForBlock = (node.getAttribute('facs')||'').replace('#','');
+      return;
+    }
+
+    if (tag === 'lg') {
+      const lgChildren = Array.from(node.childNodes);
+      let pbBetween = pendingPbForBlock;
+      pendingPbForBlock = null;
+
+      // Raccogli le linee con i loro pbBefore (e l'eventuale pb finale)
+      const lineNodes = [];
+      lgChildren.forEach(child => {
+        if (child.nodeType !== 1) return;
+        if (child.localName === 'pb') {
+          pbBetween = (child.getAttribute('facs')||'').replace('#','');
+        } else if (child.localName === 'l') {
+          lineNodes.push({ lEl: child, pbBefore: pbBetween });
+          pbBetween = null;
+        }
+      });
+      const trailingPb = pbBetween;
+
+      let lgHtml = '<div class="tei-lg" style="margin:0.5em 0;">';
+      lineNodes.forEach((ln, i) => {
+        const dataAttrs = [];
+        if (ln.pbBefore) dataAttrs.push(`data-l-pb-before="${escAttr(ln.pbBefore)}"`);
+        if (i === lineNodes.length - 1 && trailingPb) {
+          dataAttrs.push(`data-l-pb-after="${escAttr(trailingPb)}"`);
+        }
+        const inner = walkInline(ln.lEl, true);
+
+        // Label visivo del pb prima della linea (estetico, rimosso all'export)
+        if (ln.pbBefore) {
+          const lbl = ln.pbBefore.replace(/^[^_]*_/, 'f.');
+          lgHtml += `<div class="pb-label" style="font-size:0.75em;font-family:'Source Sans 3',sans-serif;color:var(--accent);font-weight:700;margin:4px 0;">[${lbl}]</div>`;
+        }
+
+        lgHtml += `<div class="tei-l" ${dataAttrs.join(' ')} style="display:flex;gap:1.2em;align-items:baseline;">
+          <span style="font-size:0.7em;font-family:'Source Sans 3',sans-serif;color:var(--muted);min-width:1.5em;text-align:right;">${i+1}</span>
+          <span>${inner}</span></div>`;
+      });
+
+      // Label visivo del pb finale (dopo l'ultima linea, prima del prossimo blocco)
+      if (trailingPb) {
+        const lbl = trailingPb.replace(/^[^_]*_/, 'f.');
+        lgHtml += `<div class="pb-label" style="font-size:0.75em;font-family:'Source Sans 3',sans-serif;color:var(--accent);font-weight:700;margin:4px 0;">[${lbl}]</div>`;
+      }
+      lgHtml += '</div>';
+      html += lgHtml;
+      return;
+    }
+
+    if (tag === 'p' || tag === 'ab') {
+      const pbBefore  = pendingPbForBlock;
+      pendingPbForBlock = null;
+
+      // Popola _interpProseSegs come fa il path esistente: editorToTei
+      // userà pbBefore quando serializza il <p>.
+      const openingLb = Array.from(node.childNodes).find(c => c.nodeType===1 && c.localName==='lb');
+      window._interpProseSegs.push({
+        pbBefore: pbBefore || null,
+        openingLb: openingLb ? openingLb.getAttribute('n') : null
+      });
+
+      const inner = walkInline(node, true);
+      if (pbBefore) {
+        const lbl = pbBefore.replace(/^[^_]*_/, 'f.');
+        html += `<div class="pb-label" style="font-size:0.75em;font-family:'Source Sans 3',sans-serif;color:var(--accent);font-weight:700;margin:4px 0;">[${lbl}]</div>`;
+      }
+      html += `<p>${inner}</p>`;
+      return;
+    }
+
+    // Fallback per elementi inattesi: passa direttamente i figli
+    // (raro: garantisce che nessun contenuto vada perso)
+    html += walkInline(node, false);
+  });
+
+  const editor = document.getElementById('interp-editor');
+  editor.innerHTML = html || '<p></p>';
+  editor.classList.toggle('hide-lb', !showLb);
+
+  const noteCount = noteOrder.length;
+  updateStatus(`Interpretativa caricata — ${noteCount} ${noteCount === 1 ? 'nota' : 'note'}. Modifica nel pannello destro.`);
+  updateWordCount();
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONVERTI
+═══════════════════════════════════════════════════════ */
+function convert() {
+  const input = document.getElementById('input-area').value.trim();
+  if (!input) { showMsg('Incolla il TEI della diplomatica nel pannello sinistro.'); return; }
+
+  let xml = input;
+  if (!xml.startsWith('<')) { showMsg('Input non valido: atteso XML.'); return; }
+  if (!xml.startsWith('<?xml') && !xml.startsWith('<TEI') && !xml.startsWith('<div')) {
+    showMsg('Input non valido.'); return;
+  }
+
+  // Chiudi cassetto e resetta stato note prima di rigenerare
+  closeNoteDrawer();
+
+  try {
+    const wrapper = `<root xmlns="http://www.tei-c.org/ns/1.0">${xml}</root>`;
+    const doc = new DOMParser().parseFromString(wrapper, 'application/xml');
+    if (doc.querySelector('parsererror')) throw new Error('XML non valido');
+
+    const diplDiv = doc.getElementsByTagNameNS(NS, 'div')[0] || doc.querySelector('div');
+    if (!diplDiv) { showMsg('Nessun <div> trovato nell\'input.'); return; }
+
+    // Branch: se il <div> è esplicitamente type="interpretative" (o "interpretive")
+    // delega a loadInterpretative() — caricamento di un'interpretativa già formata
+    // per la sola modifica delle note. Per qualunque altro tipo (incluso il default
+    // "diplomatic" o type assente) si prosegue con il path esistente: nessuna
+    // regressione possibile per gli input attuali.
+    const divType = (diplDiv.getAttribute('type') || '').toLowerCase();
+    if (divType === 'interpretative' || divType === 'interpretive') {
+      loadInterpretative(diplDiv);
+      return;
+    }
+
+    // Reset stato walker
+    walkState.currentSurface      = '';
+    walkState.showSurfaceLabel    = false;
+    walkState.firstLbAfterPb      = false;
+    walkState.firstLbAfterLg      = false;
+    walkState._pendingPbForProse   = null;
+    window._interpSegments        = null;
+    window._interpOpeningPb       = null;
+    window._interpProseSegs       = [];
+    window._interpProseSegIdx     = 0;
+    zoneIndex    = {};
+    surfaceIndex = {};
+
+    // Costruisce noteIndexMap, noteContentMap, noteIsNew, noteOrder
+    buildDiplomaticNotes(diplDiv);
+
+    const milestonesOutsideLg = Array.from(diplDiv.getElementsByTagNameNS(NS,"milestone"))
+      .filter(m => m.getAttribute("unit") === "verse" && !hasAncestor(m, "lg"));
+
+    let html;
+    if (milestonesOutsideLg.length) {
+      const result = buildInterpAutoWithMilestones(diplDiv);
+      if (result) {
+        window._interpSegments  = result.segments;
+        window._interpOpeningPb = result.openingPb || null;
+        html = result.html;
+      } else {
+        window._interpSegments  = null;
+        window._interpOpeningPb = null;
+        html = buildLgHtml(diplDiv, walkInterpAuto);
+      }
+    } else {
+      window._interpSegments  = null;
+      window._interpProseSegs = [];
+      Array.from(diplDiv.getElementsByTagNameNS(NS, 'p')).forEach(p => {
+        const elems = Array.from(p.childNodes).filter(c => c.nodeType === 1);
+        let pbBefore = null;
+        const pbInside = elems.find(c => c.localName === 'pb');
+        if (pbInside) {
+          pbBefore = (pbInside.getAttribute('facs')||'').replace('#','');
+        } else {
+          let sib = p.previousSibling;
+          while (sib) {
+            if (sib.nodeType === 1) {
+              if (sib.localName === 'pb') pbBefore = (sib.getAttribute('facs')||'').replace('#','');
+              break;
+            }
+            sib = sib.previousSibling;
+          }
+        }
+        const openingLb = elems.find(c => c.localName === 'lb') || null;
+        window._interpProseSegs.push({
+          pbBefore,
+          openingLb: openingLb ? openingLb.getAttribute('n') : null
+        });
+      });
+      html = buildLgHtml(diplDiv, walkInterpAuto);
+    }
+
+    const cleaned = html
+      .replace(/\s+(<span class="lb-marker-tight")/g, '$1')
+      .replace(/\s+(<span class="lb-marker" style="font-size)/g, '$1');
+    const editor  = document.getElementById('interp-editor');
+    editor.innerHTML = cleaned || '<p></p>';
+    editor.classList.toggle('hide-lb', !showLb);
+
+    updateStatus('Interpretativa generata — modifica il testo nel pannello destro.');
+    updateWordCount();
+
+  } catch(e) {
+    console.error('Errore convert():', e);
+    showMsg('Errore: ' + e.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOGGLE SEPARATORI RIGA
+═══════════════════════════════════════════════════════ */
+function toggleLb() {
+  showLb = !showLb;
+  document.getElementById('interp-editor').classList.toggle('hide-lb', !showLb);
+  const btn = document.getElementById('btn-lb');
+  btn.style.opacity = showLb ? '1' : '0.45';
+}
+
+/* ═══════════════════════════════════════════════════════
+   FORMATTAZIONE SELEZIONE
+═══════════════════════════════════════════════════════ */
+function formatSel(cmd) {
+  document.getElementById('interp-editor').focus();
+  document.execCommand(cmd === 'bold' ? 'bold' : 'italic');
+}
+
+function wrapSel(before, after) {
+  const editor = document.getElementById('interp-editor');
+  editor.focus();
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const text = sel.getRangeAt(0).toString();
+  if (text) document.execCommand('insertText', false, before + text + after);
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXPORT TEI
+═══════════════════════════════════════════════════════ */
+
+/**
+ * Serializza il contenuto di un nodo HTML inline in XML TEI,
+ * preservando <hi rend="..."> per le note dalla diplomatica.
+ * NOTA: questa funzione non viene più usata per le note
+ * (si usa noteContentMap), ma resta per altri usi futuri.
+ */
+function serializeNoteXml(node) {
+  let out = '';
+  Array.from(node.childNodes).forEach(c => {
+    if (c.nodeType === 3) {
+      out += c.textContent
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    } else if (c.nodeType === 1) {
+      if (c.localName === 'hi') {
+        const rend  = c.getAttribute('rend') || '';
+        const inner = serializeNoteXml(c);
+        out += rend ? `<hi rend="${rend}">${inner}</hi>` : `<hi>${inner}</hi>`;
+      } else {
+        out += serializeNoteXml(c);
+      }
+    }
+  });
+  return out;
+}
+
+function editorToTei() {
+  const editor = document.getElementById('interp-editor');
+
+  // Salva testo nota attiva prima di esportare
+  if (activeNoteId) {
+    const nd = document.getElementById('note-editor');
+    if (nd) noteContentMap[activeNoteId] = nd.innerHTML;
+  }
+
+  const clone = editor.cloneNode(true);
+  clone.querySelectorAll('.lb-facs').forEach(el => el.remove());
+  window._interpProseSegIdx = 0;
+
+  let tei = '';
+  let lbCounter = 0;
+
+  function serializeNode(node) {
+    if (node.nodeType === 3) {
+      const t = node.textContent;
+      if (!t.trim()) return '';
+      return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    if (node.nodeType !== 1) return '';
+    const tag = node.localName;
+    const cls = node.className || '';
+
+    if (cls.includes('lb-open')) {
+      if (transferLb) {
+        const n = node.getAttribute ? node.getAttribute('data-lb-n') : '';
+        return n ? `<lb n="${n}"/>` : '';
+      }
+      return '';
+    }
+    if (cls.includes('lb-marker') || cls.includes('lb-marker-tight')) {
+      if (transferLb) {
+        const n   = node.getAttribute ? node.getAttribute('data-lb-n') : '';
+        const brk = node.getAttribute ? node.getAttribute('data-lb-break') : '';
+        if (!n) return '';
+        return brk === 'no' ? `<lb n="${n}" break="no"/>` : `<lb n="${n}"/>`;
+      }
+      return '';
+    }
+    if (cls.includes('pb-label'))  return '';
+    if (cls.includes('lb-facs'))   return '';
+    if (cls.includes('pb-inline-marker')) {
+      if (transferPb) {
+        const facs = node.getAttribute ? node.getAttribute('data-pb-facs') : '';
+        return facs ? `<pb facs="#${facs}"/>` : '';
+      }
+      return '';
+    }
+    if (cls.includes('tei-damage'))   return `†${serializeChildren(node)}†`;
+    if (cls.includes('tei-unclear'))  return `†${serializeChildren(node)}†`;
+    if (cls.includes('tei-supplied')) return `⟨${serializeChildren(node)}⟩`;
+    if (tag === 'em')     return `<hi rend="italic">${serializeChildren(node)}</hi>`;
+    if (tag === 'strong') return `<hi rend="bold">${serializeChildren(node)}</hi>`;
+    if (tag === 'sup' && cls.includes('note-marker')) {
+      const sid      = node.getAttribute ? node.getAttribute('data-seg-id') : '';
+      const hasText  = node.getAttribute ? node.getAttribute('data-seg-has-text') : '0';
+      // Se il <seg> originale aveva testo, il testo è già stato serializzato
+      // come nodo testo precedente nel DOM — emettiamo solo il tag <seg/>
+      // come ancora vuota. Se era già vuoto, idem.
+      return sid ? `<seg xml:id="${sid}"/>` : '';
+    }
+    if (tag === 'sup') return '';
+    if (tag === 'br')     { lbCounter++; return `\n    <lb n="${lbCounter}"/>`; }
+    if (tag === 'p') {
+      lbCounter = 0;
+      const pIdx = window._interpProseSegIdx !== undefined ? window._interpProseSegIdx++ : 0;
+      const seg  = window._interpProseSegs ? window._interpProseSegs[pIdx] : null;
+      const inner = serializeChildren(node);
+      if (inner.trim().startsWith('<pb') || inner.trim().startsWith('<lg>')) {
+        return inner;
+      }
+      const pbTag = (seg && seg.pbBefore && transferPb) ? `<pb facs="#${seg.pbBefore}"/>\n` : '';
+      return `${pbTag}  <p>\n    ${inner.trim()}\n  </p>\n`;
+    }
+    if (tag === 'div' && cls.includes('tei-lg')) {
+      const segs      = window._interpSegments;
+      const openingPb = window._interpOpeningPb;
+      let lgContent   = '';
+      const lines     = Array.from(node.querySelectorAll('.tei-l'));
+
+      lines.forEach((line, i) => {
+        const seg      = segs ? segs[i] : null;
+        // Fallback (attivo solo se _interpSegments è null): legge attributi
+        // data-l-* impostati da loadInterpretative(). I .tei-l prodotti dai
+        // walker diplomatici non hanno questi attributi → nessuna regressione.
+        const fallbackPbBefore = !seg ? (line.getAttribute('data-l-pb-before') || '') : '';
+        const fallbackLbN      = !seg ? (line.getAttribute('data-l-lb-n')      || '') : '';
+        const fallbackPbAfter  = !seg ? (line.getAttribute('data-l-pb-after')  || '') : '';
+        const lastSpan = line.querySelector('span:last-child') || line;
+        const lineClone = lastSpan.cloneNode(true);
+        // Rimuovi lb-facs e pb-inline-marker visivi (già gestiti via pbAfter)
+        lineClone.querySelectorAll('.lb-facs, .pb-inline-marker').forEach(el => el.remove());
+
+        if (seg && seg.pbBefore && transferPb) {
+          lgContent += `  <pb facs="#${seg.pbBefore}"/>\n`;
+        } else if (fallbackPbBefore && transferPb) {
+          lgContent += `  <pb facs="#${fallbackPbBefore}"/>\n`;
+        }
+
+        let lContent = '';
+        if (seg && seg.lbN && transferLb) {
+          lContent += `<lb n="${seg.lbN}"/>`;
+        } else if (fallbackLbN && transferLb) {
+          lContent += `<lb n="${fallbackLbN}"/>`;
+        }
+        lContent += serializeChildren(lineClone).trim();
+
+        lgContent += `  <l n="${i+1}">${lContent}</l>\n`;
+
+        // <pb> fratello: emesso DOPO il </l> corrente, PRIMA del <l> successivo
+        if (seg && seg.pbAfter && transferPb) {
+          lgContent += `  <pb facs="#${seg.pbAfter}"/>\n`;
+        } else if (fallbackPbAfter && transferPb) {
+          lgContent += `  <pb facs="#${fallbackPbAfter}"/>\n`;
+        }
+      });
+
+      const pbOpen = (openingPb && transferPb) ? `<pb facs="#${openingPb}"/>\n` : '';
+      return `${pbOpen}<lg>\n${lgContent}</lg>\n`;
+    }
+    return serializeChildren(node);
+  }
+
+  function serializeChildren(node) {
+    return Array.from(node.childNodes).map(serializeNode).join('');
+  }
+
+  tei = `<div type="interpretative">\n${serializeChildren(clone)}</div>`;
+
+  // Strip whitespace prima di <lb break="no"> — eredità dell'indentazione XML in input
+  tei = tei.replace(/\s+(<lb[^>]*break="no"[^>]*\/>)/g, '$1');
+
+  // Aggiunge le note da noteContentMap / noteXmlMap (diplomatica + nuove)
+  // serializeNoteForExport() usa XML originale per note non modificate,
+  // serializza il contenteditable per note modificate o nuove
+  const orderedIds = noteOrder.filter(sid => sid in noteContentMap || sid in (noteXmlMap||{}));
+  if (orderedIds.length > 0) {
+    let notesXml = '\n';
+    orderedIds.forEach(sid => {
+      const content = serializeNoteForExport(sid);
+      notesXml += `  <note target="#${sid}">${content}</note>\n`;
+    });
+    tei = tei.replace('</div>', notesXml + '</div>');
+  }
+
+  return tei;
+}
+
+function copyTei() {
+  const tei = editorToTei();
+  navigator.clipboard.writeText(tei).then(() => {
+    updateStatus('TEI copiato negli appunti.');
+  }).catch(() => {
+    showMsg('Impossibile copiare — usa il pulsante Scarica .xml');
+  });
+}
+
+function downloadTei() {
+  const tei = `<?xml version="1.0" encoding="UTF-8"?>\n${editorToTei()}`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([tei], { type: 'application/xml' }));
+  a.download = 'interpretativa.xml';
+  a.click();
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILITY UI
+═══════════════════════════════════════════════════════ */
+function clearInput() {
+  document.getElementById('input-area').value = '';
+  document.getElementById('interp-editor').innerHTML = '';
+  closeNoteDrawer();
+  noteIndexMap    = {};
+  noteContentMap  = {};
+  noteXmlMap      = {};
+  noteModifiedMap = {};
+  noteIsNew       = {};
+  noteOrder       = [];
+  newNoteCounter  = 0;
+  activeNoteId    = null;
+  updateStatus('Pronto');
+  updateWordCount();
+}
+
+function updateStatus(text) {
+  document.getElementById('status').textContent = text;
+}
+
+function updateWordCount() {
+  const text  = document.getElementById('interp-editor').innerText || '';
+  const words = text.trim().split(/\s+/).filter(w => w).length;
+  document.getElementById('word-count').textContent = words > 0 ? `${words} parole` : '';
+}
+
+/* ═══════════════════════════════════════════════════════
+   EVENT LISTENERS
+═══════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  const editor   = document.getElementById('interp-editor');
+  const noteDiv  = document.getElementById('note-editor');
+
+  // Conteggio parole durante modifica
+  editor.addEventListener('input', updateWordCount);
+
+  // Ctrl+B / Ctrl+I / Ctrl+Enter nell'editor principale
+  editor.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key === 'b') { e.preventDefault(); formatSel('bold'); }
+    if ((e.ctrlKey||e.metaKey) && e.key === 'i') { e.preventDefault(); formatSel('italic'); }
+    if ((e.ctrlKey||e.metaKey) && e.key === 'Enter') { e.preventDefault(); convert(); }
+  });
+
+  // Ctrl+B / Ctrl+I nel cassetto note — forza <strong>/<em> via execCommand
+  noteDiv.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key === 'b') {
+      e.preventDefault();
+      // Usa bold e poi normalizza subito <b> → <strong>
+      document.execCommand('bold');
+      noteDiv.querySelectorAll('b').forEach(el => {
+        const s = document.createElement('strong');
+        s.innerHTML = el.innerHTML;
+        el.replaceWith(s);
+      });
+    }
+    if ((e.ctrlKey||e.metaKey) && e.key === 'i') {
+      e.preventDefault();
+      document.execCommand('italic');
+      noteDiv.querySelectorAll('i').forEach(el => {
+        const em = document.createElement('em');
+        em.innerHTML = el.innerHTML;
+        el.replaceWith(em);
+      });
+    }
+  });
+
+  // Aggiorna noteContentMap mentre l'utente scrive nel cassetto
+  noteDiv.addEventListener('input', () => {
+    if (activeNoteId) {
+      noteContentMap[activeNoteId]  = noteDiv.innerHTML;
+      if (noteModifiedMap) noteModifiedMap[activeNoteId] = true;
+    }
+  });
+  editor.addEventListener('click', e => {
+    const marker = e.target.closest('sup.note-marker');
+    if (marker) {
+      e.stopPropagation();
+      const sid = marker.getAttribute('data-seg-id');
+      if (!sid) return;
+      if (activeNoteId === sid && document.getElementById('note-drawer').classList.contains('open')) {
+        closeNoteDrawer();
+      } else {
+        openNoteDrawer(sid);
+      }
+    }
+  });
+
+  // Context menu tasto destro nell'editor
+  editor.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    // Salva la selezione/posizione corrente
+    const sel = window.getSelection();
+    savedRange = (sel && sel.rangeCount) ? sel.getRangeAt(0).cloneRange() : null;
+    const menu = document.getElementById('ctx-menu');
+    menu.style.display = 'block';
+    menu.style.left = e.clientX + 'px';
+    menu.style.top  = e.clientY + 'px';
+  });
+
+  // Chiudi context menu su clic fuori
+  document.addEventListener('click', hideCtxMenu);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { hideCtxMenu(); closeNoteDrawer(); } });
+
+  // Inizializza opacità bottoni toggle
+  document.getElementById('btn-lb').style.opacity = '0.45';
+});
+</script>
+</body>
+</html>

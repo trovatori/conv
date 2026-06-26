@@ -1,0 +1,2108 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Converter Edizione Critica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent:       #a03f33;
+    --accent2:      #3a6b8a;
+    --accent-light: rgba(160,63,51,0.08);
+    --accent2-light:rgba(58,107,138,0.10);
+    --accent-hover: rgba(160,63,51,0.15);
+    --bg:     #fbf9f4;
+    --panel:  #f5f3ee;
+    --text:   #1a1410;
+    --muted:  #6b7280;
+    --border: #e2ddd6;
+    --mono:   "JetBrains Mono", monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: "Source Sans 3", sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+  /* ── HEADER ── */
+  header { background: var(--text); color: white; padding: 14px 32px; display: flex; align-items: baseline; justify-content: space-between; flex-shrink: 0; }
+  .hd-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; font-weight: 300; font-style: italic; }
+  .hd-title strong { font-style: normal; font-weight: 700; color: #e8c4be; }
+  .hd-subtitle { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; }
+
+  /* ── GUIDE BAR ── */
+  .guide { background: var(--panel); border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; flex-shrink: 0; }
+  .guide-label { font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); flex-shrink: 0; background: none; border: none; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; padding: 0; }
+  .guide-items { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .guide-items.hidden { display: none !important; }
+  .guide-item { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .guide-item code { font-family: var(--mono); font-size: 10px; background: white; border: 1px solid var(--border); padding: 2px 5px; border-radius: 3px; color: var(--text); }
+
+  /* ── LAYOUT ── */
+  .workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+  .panel { display: flex; flex-direction: column; min-width: 15%; }
+  #panel-left  { flex: 1; width: var(--left-w, 50%); flex: none; border-right: none; }
+  #panel-right { flex: 1; min-width: 15%; border-left: 1px solid var(--border); }
+
+  /* ── RESIZER (identico a ed_critica) ── */
+  #col-resizer {
+    flex-shrink: 0;
+    width: 12px;
+    background: transparent;
+    cursor: col-resize;
+    position: relative;
+    z-index: 20;
+    user-select: none;
+  }
+  #col-resizer::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+  #col-resizer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 24px;
+    background: #d1cdc8;
+    border-radius: 99px;
+    transition: background 0.2s, height 0.2s;
+    z-index: 1;
+  }
+  #col-resizer:hover::before, #col-resizer.dragging::before { background: #bbb; }
+  #col-resizer:hover::after,  #col-resizer.dragging::after  { background: #9e9e9e; height: 32px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; gap: 8px; }
+  .panel-label { font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+  .panel-actions { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; overflow: hidden; }
+
+  /* ── BUTTONS ── */
+  .btn { font-family: "Source Sans 3", sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 12px; border-radius: 3px; border: 1px solid var(--border); background: white; color: var(--muted); cursor: pointer; transition: all .15s; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn.primary:hover { background: #8a3329; }
+  .btn.secondary { border-color: var(--accent2); color: var(--accent2); }
+  .btn.secondary:hover { background: var(--accent2-light); }
+  .btn.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+  .btn.active2 { background: var(--accent2-light); border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── PANNELLO SINISTRO ── */
+  .rte-toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; flex-wrap: wrap; }
+  .rte-btn { font-family: "Source Sans 3",sans-serif; font-size: 12px; font-weight: 700; padding: 3px 9px; border: 1px solid var(--border); border-radius: 3px; background: white; cursor: pointer; color: var(--text); }
+  .rte-btn:hover, .rte-btn.active { border-color: var(--accent); color: var(--accent); }
+  .rte-divider { width: 1px; height: 18px; background: var(--border); }
+  .rte-mode-toggle { display: flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+  .rte-mode-btn { font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border: none; background: white; cursor: pointer; color: var(--muted); transition: all .15s; }
+  .rte-mode-btn.active { background: var(--accent); color: white; }
+
+  #editor-area {
+    flex: 1; min-height: 0; overflow-y: auto;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.8;
+    padding: 20px 24px; outline: none;
+    white-space: pre-wrap; word-break: break-word;
+    color: var(--text); background: white;
+  }
+  #editor-area:empty::before { content: attr(data-placeholder); color: #bbb; font-style: italic; pointer-events: none; white-space: pre-wrap; }
+
+  /* ── PANNELLO DESTRO ── */
+  .interp-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; flex-wrap: wrap; }
+
+  /* ── Barra testimoni (sotto l'interp-toolbar, collassabile) ── */
+  #wit-bar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  #wit-bar.open { display: flex; }
+  #wit-bar label {
+    font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent2); white-space: nowrap;
+  }
+  #wit-input {
+    flex: 1; min-width: 180px;
+    font-family: var(--mono); font-size: 12px;
+    padding: 4px 9px;
+    border: 1px solid var(--accent2); border-radius: 3px;
+    outline: none; background: white; color: var(--text);
+  }
+  #wit-input:focus { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(58,107,138,0.12); }
+  #wit-count {
+    font-size: 10px; color: var(--muted); white-space: nowrap; font-family: var(--mono);
+  }
+
+  #crit-editor {
+    flex: 1; min-height: 0; overflow-y: auto;
+    font-family: "Source Serif 4", serif; font-size: 1.05rem; line-height: 1.9;
+    padding: 28px 36px; outline: none;
+    color: var(--text); background: white;
+  }
+  #crit-editor:empty::before { content: attr(data-placeholder); color: #bbb; font-style: italic; pointer-events: none; }
+  #crit-editor p { margin-bottom: 0.5em; }
+
+  /* ── NOTE MARKERS ── */
+  #crit-editor sup.note-marker {
+    color: var(--accent); font-family: "Source Sans 3", sans-serif;
+    font-size: 0.7em; font-weight: 700;
+    cursor: pointer; user-select: none; margin-left: 1px;
+  }
+  #crit-editor sup.note-marker:hover { text-decoration: underline; }
+  #crit-editor sup.note-marker.nd-active { background: rgba(160,63,51,0.13); border-radius: 2px; padding: 0 1px; }
+
+  /* ── APP MARKERS ── */
+  #crit-editor .tei-app {
+    border-bottom: 2px dotted var(--accent2);
+    background: var(--accent2-light);
+    cursor: pointer; padding: 0 1px;
+    transition: background 0.15s;
+  }
+  #crit-editor .tei-app:hover, #crit-editor .tei-app.ad-active { background: rgba(58,107,138,0.18); }
+  #crit-editor .tei-app.ad-active { outline: 1px solid var(--accent2); border-radius: 2px; }
+  #crit-editor .tei-app.conjecture::before { content: "⟨"; font-size: 0.85em; color: var(--accent2); }
+  #crit-editor .tei-app.conjecture::after  { content: "⟩"; font-size: 0.85em; color: var(--accent2); }
+
+  /* ── NOTE DRAWER ── */
+  #note-drawer {
+    display: none; flex-shrink: 0;
+    border-top: 3px solid var(--accent);
+    background: var(--panel); padding: 10px 16px 12px;
+  }
+  #note-drawer.open { display: block; }
+
+  /* ── APP DRAWER ── */
+  #app-drawer {
+    display: none; flex-shrink: 0;
+    border-top: 3px solid var(--accent2);
+    background: var(--panel); padding: 10px 16px 14px;
+  }
+  #app-drawer.open { display: block; }
+
+  /* Shared drawer styles */
+  .nd-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .nd-meta { display: flex; align-items: baseline; gap: 8px; }
+  .nd-num { font-size: 11px; font-weight: 800; font-family: var(--mono); }
+  .nd-num.note-color { color: var(--accent); }
+  .nd-num.app-color  { color: var(--accent2); }
+  .nd-label { font-size: 8px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .nd-label.new { color: var(--accent); }
+  .nd-label.new2 { color: var(--accent2); }
+  .nd-controls { display: flex; align-items: center; gap: 4px; }
+  .nd-nav { font-size: 9px; font-weight: 700; color: var(--muted); min-width: 30px; text-align: center; letter-spacing: 0.05em; }
+  #note-editor {
+    width: 100%; font-family: "Source Sans 3", sans-serif;
+    font-size: 13px; line-height: 1.65;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 3px;
+    background: white; color: var(--text); min-height: 58px;
+    outline: none; white-space: pre-wrap; word-break: break-word;
+  }
+  #note-editor:focus { border-color: var(--accent); }
+  #note-editor:empty::before { content: attr(data-placeholder); color: #bbb; font-style: italic; pointer-events: none; }
+
+  /* ── APP DRAWER FIELDS ── */
+  .app-lem-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .app-lem-row input[type="text"] { flex: 1; font-family: "Source Sans 3", sans-serif; font-size: 12px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 3px; outline: none; }
+  .app-lem-row input[type="text"]:focus { border-color: var(--accent2); }
+  .app-lem-text { font-family: "Source Serif 4", serif; font-size: 0.95rem; font-style: italic; color: var(--text); padding: 4px 9px; background: white; border: 1px solid var(--border); border-radius: 3px; flex: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-conj-label { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .app-conj-label input { accent-color: var(--accent2); cursor: pointer; }
+
+  .rdg-rows { display: flex; flex-direction: column; gap: 6px; }
+  .rdg-row { display: flex; gap: 6px; align-items: center; }
+  .rdg-row input[type="text"] { font-family: "Source Sans 3", sans-serif; font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 3px; outline: none; }
+  .rdg-row input[type="text"]:focus { border-color: var(--accent2); }
+  .rdg-wit  { width: 80px; flex-shrink: 0; }
+  .rdg-text { flex: 1; }
+  .rdg-type { font-size: 10px; font-weight: 700; padding: 4px 7px; border: 1px solid var(--border); border-radius: 3px; background: white; color: var(--muted); cursor: pointer; font-family: "Source Sans 3", sans-serif; }
+  .rdg-type:focus { outline: none; border-color: var(--accent2); }
+  .rdg-del { font-size: 12px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 2px 5px; border-radius: 3px; }
+  .rdg-del:hover { color: var(--accent); background: var(--accent-light); }
+  .app-drawer-footer { margin-top: 8px; display: flex; gap: 6px; }
+  .base-wit-label {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent2); cursor: pointer; white-space: nowrap; padding: 0 4px;
+  }
+  .base-wit-label input { accent-color: var(--accent2); cursor: pointer; }
+
+  /* ── CONTEXT MENU ── */
+  #ctx-menu {
+    position: fixed; display: none; z-index: 9999;
+    background: white; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; min-width: 200px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+  }
+  .ctx-item { padding: 8px 14px; font-size: 12px; font-family: "Source Sans 3", sans-serif; cursor: pointer; color: var(--text); }
+  .ctx-item:hover { background: var(--panel); }
+  .ctx-item.primary  { color: var(--accent); font-weight: 700; }
+  .ctx-item.secondary{ color: var(--accent2); font-weight: 700; }
+  .ctx-divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  /* ── STATUS BAR ── */
+  .status-bar { padding: 5px 16px; background: var(--panel); border-top: 1px solid var(--border); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
+
+  /* ── MESSAGE ── */
+  .msg { padding: 7px 16px; font-size: 11px; font-weight: 600; color: white; background: var(--accent); display: none; flex-shrink: 0; }
+  .msg.visible { display: block; }
+
+  /* ── TEI PREVIEW MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 10000; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 5px; width: min(780px, 92vw); max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .modal-title { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); }
+  .modal-close { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--muted); padding: 2px 6px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px; }
+  .modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 18px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .tei-preview {
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.75;
+    white-space: pre-wrap; word-break: break-word;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 3px;
+    padding: 14px 16px;
+  }
+  #load-tei-input:focus { border-color: var(--accent2); outline: none; }
+  .tei-preview .xt { color: #888; }
+  .tei-preview .xl { color: var(--accent); font-weight: 700; }
+  .tei-preview .xr { color: var(--accent2); font-weight: 700; }
+  .tei-preview .xe { color: #2a6e3f; font-weight: 700; }
+  .tei-preview .xa { color: #7a5c00; }
+  .tei-preview .xv { color: #4a7a4a; }
+  .tei-preview .xc { color: #888; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title"><strong>Converter Edizione Critica</strong> — notazione compatta</div>
+  <span class="hd-subtitle">Laboratorio di Filologia Romanza Digitale</span>
+</header>
+
+<div class="msg" id="msg"></div>
+
+<!-- GUIDE BAR -->
+<div class="guide">
+  <button class="guide-label" id="guide-toggle" onclick="toggleGuide()">
+    Sintassi <span id="guide-arrow" style="font-size:9px;transition:transform .2s">▾</span>
+  </button>
+  <div class="guide-items hidden" id="guide-items">
+    <div class="guide-item"><code>{A: lem}</code> lemma del testimone A</div>
+    <div class="guide-item"><code>{N^2: lem}</code> sigla con apice (→ N²)</div>
+    <div class="guide-item"><code>(B: var)</code> variante sostanziale</div>
+    <div class="guide-item"><code>(B*: var)</code> variante ortografica</div>
+    <div class="guide-item"><code>{?: lem (A: v1) (B: v2)}</code> congettura</div>
+    <div class="guide-item"><code>(B: -)</code> omissione</div>
+    <div class="guide-item"><code>[parola: nota]</code> nota di commento</div>
+  </div>
+</div>
+
+<div class="workspace">
+
+  <!-- PANNELLO SINISTRO: notazione compatta -->
+  <div class="panel" id="panel-left">
+    <div class="panel-head">
+      <span class="panel-label">Notazione compatta</span>
+      <div class="panel-actions">
+        <button class="btn" onclick="clearLeft()">Pulisci</button>
+        <button class="btn" onclick="openLoadTeiModal()" title="Carica un file TEI già formato per modificarlo nel pannello destro">Carica TEI</button>
+        <button class="btn" onclick="loadExample()">Esempio</button>
+        <button class="btn primary" onclick="convert()">Genera →</button>
+      </div>
+    </div>
+    <div class="rte-toolbar" id="rte-toolbar">
+      <span style="font-size:8px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Stile</span>
+      <button class="rte-btn" id="btn-bold"   title="Grassetto (Ctrl+B)"  onclick="rteFormat('bold')"><b>B</b></button>
+      <button class="rte-btn" id="btn-italic" title="Corsivo (Ctrl+I)"    onclick="rteFormat('italic')"><i>I</i></button>
+      <div class="rte-divider"></div>
+      <div class="rte-mode-toggle">
+        <button class="rte-mode-btn active" id="mode-poetry" onclick="setTextMode('poetry')">Poesia</button>
+        <button class="rte-mode-btn"        id="mode-prose"  onclick="setTextMode('prose')">Prosa</button>
+      </div>
+      <div class="rte-divider"></div>
+      <span id="start-stanza-label" style="font-size:8px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Dalla strofa</span>
+      <input type="number" id="start-stanza" value="1" min="1"
+             style="width:46px;font-family:var(--mono);font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;background:white;color:var(--text);text-align:center">
+      <div class="rte-divider" id="div-start-line"></div>
+      <span id="start-line-label" style="font-size:8px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)">Dal verso</span>
+      <input type="number" id="start-line" value="1" min="1"
+             style="width:46px;font-family:var(--mono);font-size:11px;padding:3px 5px;border:1px solid var(--border);border-radius:3px;background:white;color:var(--text);text-align:center">
+    </div>
+    <div id="editor-area" contenteditable="true" spellcheck="false"
+         data-placeholder="Inserisci il testo con notazione compatta…&#10;&#10;Ogni riga = un verso. Riga vuota = nuova strofa.&#10;Prosa: paragrafo separato da riga vuota = &#60;p&#62;."></div>
+  </div>
+
+  <!-- RESIZER -->
+  <div id="col-resizer" title="Trascina per ridimensionare — doppio clic per 50/50"></div>
+
+  <!-- PANNELLO DESTRO: layout pubblicazione + annotazioni -->
+  <div class="panel" id="panel-right">
+    <div class="panel-head">
+      <span class="panel-label">Testo critico (editabile)</span>
+      <div class="panel-actions">
+        <button class="btn" onclick="previewTei()" title="Anteprima TEI generato">Anteprima TEI</button>
+        <button class="btn" onclick="copyTei()" title="Copia TEI negli appunti">Copia TEI</button>
+        <button class="btn primary" onclick="downloadTei()">Scarica .xml</button>
+        <label style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0;" title="Genera teiHeader con lista testimoni — necessario per il viewer ed_critica">
+          <input type="checkbox" id="toggle-header" style="accent-color:var(--accent2)"> + header
+        </label>
+      </div>
+    </div>
+    <div class="interp-toolbar">
+      <span style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">Modifica:</span>
+      <button class="btn" onclick="formatSel('bold')" title="Grassetto (Ctrl+B)"><strong>B</strong></button>
+      <button class="btn" onclick="formatSel('italic')" title="Corsivo (Ctrl+I)"><em>I</em></button>
+      <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+      <button class="btn" onclick="addNote()" title="Aggiungi nota di commento — o tasto destro nel testo">+ Nota</button>
+      <button class="btn active2" onclick="addAppEntry()" title="Crea entrata di apparato dalla selezione — o tasto destro nel testo">+ Apparato</button>
+      <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+      <button class="btn" onclick="toggleWitBar()" id="btn-wit-bar"
+        title="Dichiara l'elenco completo dei testimoni della tradizione — abilita l'apparato negativo automatico">Testimoni</button>
+      <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+      <button class="btn" onclick="renumber()" title="Rinumera versi/paragrafi dal valore impostato in 'dal verso'/'dal paragrafo' — senza toccare annotazioni">Rinumera</button>
+    </div>
+    <!-- Barra testimoni (collassabile) -->
+    <div id="wit-bar">
+      <label for="wit-input">Tutti i testimoni:</label>
+      <input type="text" id="wit-input"
+        placeholder="es. A, B, C, N^2, D^a"
+        title="Sigle di tutti i testimoni della tradizione, separate da virgola. Il converter calcolerà automaticamente il @wit del &lt;lem&gt; come complemento dei &lt;rdg&gt;."
+        oninput="onWitInput()">
+      <span id="wit-count"></span>
+      <button class="btn" onclick="clearWitBar()" title="Svuota l'elenco testimoni">✕</button>
+    </div>
+    <div id="crit-editor" contenteditable="true" spellcheck="true"
+      data-placeholder="Il testo critico con layout di pubblicazione apparirà qui — modificabile e annotabile."></div>
+
+    <!-- ─── Note drawer ─── -->
+    <div id="note-drawer">
+      <div class="nd-header">
+        <div class="nd-meta">
+          <span class="nd-num note-color" id="nd-num">1</span>
+          <span class="nd-label" id="nd-label">nota</span>
+        </div>
+        <div class="nd-controls">
+          <button class="btn" onclick="navigateNote(-1)" title="Nota precedente">‹</button>
+          <span class="nd-nav" id="nd-nav">1 / 1</span>
+          <button class="btn" onclick="navigateNote(1)" title="Nota successiva">›</button>
+          <button class="btn" id="nd-delete" onclick="deleteNote()" style="display:none">Elimina</button>
+          <button class="btn" onclick="closeNoteDrawer()" title="Chiudi">✕</button>
+        </div>
+      </div>
+      <div id="note-editor" contenteditable="true" spellcheck="true"
+        data-placeholder="Testo della nota di commento…"></div>
+    </div>
+
+    <!-- ─── Apparatus drawer ─── -->
+    <div id="app-drawer">
+      <div class="nd-header">
+        <div class="nd-meta">
+          <span class="nd-num app-color" id="ad-num">a1</span>
+          <span class="nd-label new2" id="ad-label">apparato critico</span>
+        </div>
+        <div class="nd-controls">
+          <!-- Testimone base: imposta la sigla di default per tutti i <lem> -->
+          <label class="base-wit-label" title="Imposta il testimone-base: la sua sigla viene pre-compilata come default in ogni nuovo <lem>. Modificabile caso per caso.">
+            <input type="checkbox" id="base-wit-toggle" onchange="onBaseWitToggle()"> base
+          </label>
+          <input type="text" id="base-wit-input" placeholder="sigla base"
+                 style="display:none;width:72px;font-size:11px;padding:3px 7px;border:1px solid var(--accent2);border-radius:3px;font-family:'Source Sans 3',sans-serif;outline:none;"
+                 title="Sigla del testimone-base (default per tutti i lemmi)"
+                 oninput="onBaseWitInput()">
+          <button class="btn" id="ad-delete" onclick="deleteAppEntry()" title="Elimina entrata">Elimina</button>
+          <button class="btn" onclick="closeAppDrawer()" title="Chiudi">✕</button>
+        </div>
+      </div>
+      <!-- LEM row -->
+      <div class="app-lem-row">
+        <input type="text" id="ad-lem-wit" class="rdg-wit" placeholder="es. W, G"
+               title="Sigla/e del testimone/i che recano il lemma (più sigle separate da virgola). Usa ? per congettura."
+               oninput="onLemWitInput()">
+        <span class="app-lem-text" id="ad-lem-text" title="Testo del lemma (dalla selezione)"></span>
+        <label class="app-conj-label" title="Lemma congetturale: nessun testimone reca questa lezione">
+          <input type="checkbox" id="ad-conj" onchange="onConjChange()"> congettura
+        </label>
+      </div>
+      <!-- RDG rows -->
+      <div class="rdg-rows" id="ad-rdg-rows"></div>
+      <div class="app-drawer-footer">
+        <button class="btn" onclick="addRdgRow()">+ Variante</button>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span id="status">Pronto</span>
+      <span id="word-count"></span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Context menu -->
+<div id="ctx-menu">
+  <div class="ctx-item primary"   onclick="addNoteFromCtxMenu()">+ Nota di commento</div>
+  <div class="ctx-item secondary" onclick="addAppFromCtxMenu()">+ Entrata di apparato</div>
+</div>
+
+<!-- TEI Preview modal -->
+<div class="modal-overlay" id="tei-modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Anteprima TEI generato</span>
+      <button class="modal-close" onclick="closeTeiModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tei-preview" id="tei-preview-content"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeTeiModal()">Chiudi</button>
+      <button class="btn" onclick="copyTeiFromModal()">Copia</button>
+      <button class="btn primary" onclick="downloadTeiFromModal()">Scarica .xml</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Carica TEI pre-esistente -->
+<div class="modal-overlay" id="load-tei-modal" onclick="closeLoadModalOutside(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Carica TEI pre-esistente</span>
+      <button class="modal-close" onclick="closeLoadTeiModal()">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;">
+      <p style="font-size:12px;color:var(--muted);line-height:1.5;">
+        Incolla un <code style="font-family:var(--mono);font-size:11px;background:var(--panel);padding:1px 5px;border-radius:3px;">&lt;div type="edition"&gt;…&lt;/div&gt;</code>
+        oppure un documento <code style="font-family:var(--mono);font-size:11px;background:var(--panel);padding:1px 5px;border-radius:3px;">&lt;TEI&gt;</code> completo.
+        Il testo verrà visualizzato nel pannello destro con i marker di apparato e note già attivi.
+      </p>
+      <textarea id="load-tei-input" spellcheck="false" autocomplete="off"
+        placeholder="Incolla qui il TEI…"
+        style="flex:1;min-height:280px;font-family:var(--mono);font-size:11.5px;line-height:1.7;padding:12px 14px;border:1px solid var(--border);border-radius:3px;resize:vertical;outline:none;background:var(--panel);color:var(--text);"
+        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();doLoadTei();}"></textarea>
+      <p style="font-size:10px;color:var(--muted);">Ctrl+Invio per caricare direttamente.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeLoadTeiModal()">Annulla</button>
+      <label class="btn" style="cursor:pointer;" title="Carica da file .xml">
+        <input type="file" accept=".xml,application/xml,text/xml" style="display:none" onchange="loadTeiFromFile(event)">
+        Da file…
+      </label>
+      <button class="btn primary" onclick="doLoadTei()">Carica →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   STATO
+═══════════════════════════════════════════════════════ */
+let textMode      = 'poetry';   // 'poetry' | 'prose'
+let collectedWits = new Set();
+
+// Contatori (resettati per verso/paragrafo)
+let _lineAppIdx  = 0;
+let _lineNoteIdx = 0;
+let _currentLineN = 0;
+function _appId()       { return `av${_currentLineN}.${++_lineAppIdx}`; }
+function _noteId()      { return `nv${_currentLineN}.${++_lineNoteIdx}`; }
+function _appIdProse()  { return `ap${_currentLineN}.${++_lineAppIdx}`; }
+function _noteIdProse() { return `np${_currentLineN}.${++_lineNoteIdx}`; }
+
+// NOTE
+let noteIndexMap   = {};
+let noteContentMap = {};
+let noteIsNew      = {};
+let noteOrder      = [];
+let activeNoteId   = null;
+let newNoteCounter = 0;
+
+// APPARATUS
+let appEntryMap    = {};  // appId → { lemText, isConj, lemWit, rdgs: [{wit,text,type}] }
+let appOrder       = [];  // appId[] in ordine DOM
+let appIndexMap    = {};  // appId → label visivo ('a1','a2',…)
+let activeAppId    = null;
+let newAppCounter  = 0;
+
+// Guard: inibisce saveAppDrawerToMap mentre renderAppDrawer ripopola il DOM.
+// Senza questo, la rimozione di elementi <select> via rows.innerHTML=''
+// può emettere un evento change che scrive il vecchio DOM sotto il nuovo activeAppId.
+let _drawerRendering = false;
+
+// Conversione: note raccolte dal testo compatto
+let _compactNotes  = [];  // {id, text}
+
+// Testimone base: sigla pre-compilata di default per ogni nuovo <lem>
+let baseWit = '';   // stringa, es. 'A' o 'W, G'; '' = non impostato
+
+/* Lista completa dei testimoni della tradizione dichiarata dall'utente
+   tramite il toggle "Testimoni". Usata per il calcolo automatico del
+   @wit del <lem> nell'apparato negativo (tutti - quelli nei <rdg>). */
+let allWitnesses = [];  // es. ['A','B','C','N^2','D^a']
+
+// Context menu
+let savedRange = null;
+
+/* ═══════════════════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════════════════ */
+function escXml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Sigle con apice: N^2 → N<sup>2<\/sup> nella UI, N^2 nel TEI ──────
+   N^2  (con ^) → xml:id/wit "N^2", label "N<hi rend="sup">2<\/hi>", display N²
+   N2   (senza ^) → xml:id/wit "N2",  label "N2", display N2
+   Nota: il ^ nell'xml:id è tecnicamente fuori spec XML NCName ma è tollerato
+   da tutti i parser reali (browser, lxml, Saxon). Se serve piena conformità,
+   basta sostituire ^ con _ nell'id mantenendo la resa tipografica nel <witness>.
+   ──────────────────────────────────────────────────────────────────────── */
+function witDisplay(raw) {
+  // "N^2, B, C^1" → HTML con <sup> per la visualizzazione nell'UI
+  return raw.replace(/\^(\w+)/g, '<sup>$1</sup>');
+}
+function witAttrList(raw) {
+  // "N^2, B" → ["#N^2","#B"]  (conserva il ^ nell'attributo)
+  return raw.split(/[,\s]+/).filter(Boolean)
+    .map(w => '#' + w.replace(/^#/, ''));
+}
+// witNormalize non è più necessaria: ^ viene conservato ovunque.
+// Mantenuta come alias no-op per non rompere eventuali chiamate residue.
+function witNormalize(raw) { return raw; }
+function smartQuotes(s) {
+  return s
+    .replace(/(^|[\s([\u2018\u201C«])"(?=\S)/g, '$1\u201C')
+    .replace(/"/g, '\u201D')
+    .replace(/(^|[\s([\u2018\u201C«])'(?=\S)/g, '$1\u2018')
+    .replace(/'/g, '\u2019');
+}
+function showMsg(text) {
+  const m = document.getElementById('msg');
+  m.textContent = text; m.classList.add('visible');
+  setTimeout(() => m.classList.remove('visible'), 3000);
+}
+function updateStatus(t) { document.getElementById('status').textContent = t; }
+function updateWordCount() {
+  const ed = document.getElementById('crit-editor');
+  const n  = (ed.innerText || '').trim().split(/\s+/).filter(Boolean).length;
+  document.getElementById('word-count').textContent = n ? `${n} parole` : '';
+}
+
+/* ═══════════════════════════════════════════════════════
+   PANNELLO SINISTRO — RTE e modalità
+═══════════════════════════════════════════════════════ */
+function rteFormat(cmd) {
+  document.getElementById('editor-area').focus();
+  document.execCommand(cmd);
+  updateRteButtons();
+}
+function updateRteButtons() {
+  document.getElementById('btn-bold').classList.toggle('active', document.queryCommandState('bold'));
+  document.getElementById('btn-italic').classList.toggle('active', document.queryCommandState('italic'));
+}
+function setTextMode(mode) {
+  textMode = mode;
+  document.getElementById('mode-poetry').classList.toggle('active', mode === 'poetry');
+  document.getElementById('mode-prose').classList.toggle('active', mode === 'prose');
+  const showStanza = mode === 'poetry';
+  document.getElementById('start-stanza-label').style.display = showStanza ? '' : 'none';
+  document.getElementById('start-stanza').style.display       = showStanza ? '' : 'none';
+  document.getElementById('div-start-line').style.display     = showStanza ? '' : 'none';
+  // Aggiorna label "dal verso" / "dal paragrafo" in base alla modalità
+  document.getElementById('start-line-label').textContent = mode === 'prose' ? 'Dal paragrafo' : 'Dal verso';
+}
+function getEditorText() {
+  const ed = document.getElementById('editor-area');
+  function nodeToText(node) {
+    if (node.nodeType === 3) return node.textContent;
+    if (node.nodeName === 'BR') return '\n';
+    if (node.nodeName === 'DIV' || node.nodeName === 'P') {
+      return Array.from(node.childNodes).map(nodeToText).join('') + '\n';
+    }
+    return Array.from(node.childNodes).map(nodeToText).join('');
+  }
+  // Quando il contenteditable è popolato digitando, Chrome rappresenta la prima
+  // riga come nodo di testo nudo (senza <div> wrapper) e le successive come <div>.
+  // In quel caso il nodo di testo non riceve '\n' e si incolla alla riga seguente.
+  // Fix: aggiungi '\n' dopo un nodo di testo a livello root se il fratello successivo
+  // è un <div> o <p>.
+  const children = Array.from(ed.childNodes);
+  let result = '';
+  children.forEach((child, i) => {
+    result += nodeToText(child);
+    if (child.nodeType === 3) {
+      const next = children[i + 1];
+      if (next && (next.nodeName === 'DIV' || next.nodeName === 'P')) {
+        result += '\n';
+      }
+    }
+  });
+  return result.replace(/\n$/, '');
+}
+function toggleGuide() {
+  const items = document.getElementById('guide-items');
+  const arrow = document.getElementById('guide-arrow');
+  const hidden = items.classList.toggle('hidden');
+  arrow.style.transform = hidden ? '' : 'rotate(180deg)';
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONVERSIONE COMPATTA → TEI (invariata rispetto al converter critico)
+═══════════════════════════════════════════════════════ */
+function processHi(text) {
+  return text
+    .replace(/<b>(.*?)<\/b>/gi, '<hi rend="bold">$1</hi>')
+    .replace(/<strong>(.*?)<\/strong>/gi, '<hi rend="bold">$1</hi>')
+    .replace(/<i>(.*?)<\/i>/gi, '<hi rend="italic">$1</hi>')
+    .replace(/<em>(.*?)<\/em>/gi, '<hi rend="italic">$1</hi>');
+}
+
+function processLine(line, lineN) {
+  _currentLineN = lineN; _lineAppIdx = 0; _lineNoteIdx = 0;
+  const appId  = textMode === 'prose' ? () => _appIdProse()  : () => _appId();
+  const noteId = textMode === 'prose' ? () => _noteIdProse() : () => _noteId();
+
+  let processed = line.replace(/\{([^{}]+)\}/g, (match, inner) => parseApp(inner, appId));
+  processed = processed.replace(/\[:\s*([^\]]+?)\]/g, (match, noteText) => {
+    const nId = noteId();
+    _compactNotes.push({ id: nId, text: processHi(escXml(noteText.trim())) });
+    return `<seg xml:id="${nId}"/>`;
+  });
+  processed = processed.replace(/\[([^\]]+?):\s*([^\]]+?)\]/g, (match, segText, noteText) => {
+    const nId = noteId();
+    _compactNotes.push({ id: nId, text: processHi(escXml(noteText.trim())) });
+    return `<seg xml:id="${nId}">${escXml(segText.trim())}</seg>`;
+  });
+  return processed;
+}
+
+function parseApp(inner, appIdFn) {
+  const appId = appIdFn ? appIdFn() : _appId();
+  const lemMatchNormal = inner.match(/^([A-Za-z0-9?][A-Za-z0-9*^, ]*):\s*(.*?)(?=\s*\(|$)/);
+  const lemMatchNeg    = !lemMatchNormal && inner.match(/^:\s*(.*?)(?=\s*\(|$)/);
+  if (!lemMatchNormal && !lemMatchNeg) return `<!-- ERRORE: ${inner} -->`;
+
+  const isNeg    = !!lemMatchNeg;
+  const lemSigla = isNeg ? '' : lemMatchNormal[1].trim();
+  const isConj   = lemSigla === '?';
+  const lemText  = isNeg ? lemMatchNeg[1].trim() : lemMatchNormal[2].trim();
+  const lemWits  = (isConj || isNeg)
+    ? ''
+    : lemSigla.split(',').map(w => '#' + w.trim().replace(/\*/g, '')).join(' ');
+
+  const rdgRegex = /\(([^:]+):\s*([^)]+)\)/g;
+  const rdgs = [];
+  let m;
+  while ((m = rdgRegex.exec(inner)) !== null) {
+    const witRaw = m[1]; const text = m[2].trim();
+    const isOm = text === '-';
+    const tokens = witRaw.split(',').map(t => {
+      const s = t.trim(); const orth = s.endsWith('*');
+      return { id: '#' + s.replace(/\*/g,'').trim(), orth };
+    });
+    const allOrth = tokens.every(t => t.orth);
+    const allSost = tokens.every(t => !t.orth);
+    if (isOm) {
+      rdgs.push({ wit: tokens.map(t => t.id).join(' '), type: '', om: true, text: '' });
+    } else if (allOrth || allSost) {
+      rdgs.push({ wit: tokens.map(t => t.id).join(' '), type: allOrth ? 'orthographic' : '', om: false, text });
+    } else {
+      tokens.forEach(t => rdgs.push({ wit: t.id, type: t.orth ? 'orthographic' : '', om: false, text }));
+    }
+    tokens.forEach(t => collectedWits.add(t.id.replace('#','')));
+  }
+  if (!isConj && !isNeg) lemWits.split(' ').filter(Boolean).forEach(w => collectedWits.add(w.replace('#','')));
+  return { appId, isConj, isNeg, lemText, lemWits, rdgs };
+}
+
+function compactToStructured(input) {
+  _compactNotes = [];
+  collectedWits = new Set();
+  _lineAppIdx = 0; _lineNoteIdx = 0; _currentLineN = 0;
+
+  const lines    = input.split('\n');
+  // Struttura: array di { type: 'lg'|'p', items: [{lineN, teiLine}] } o {type:'app', data}
+  const blocks   = [];
+
+  if (textMode === 'prose') {
+    const startLine = parseInt(document.getElementById('start-line')?.value||'1',10)||1;
+    let paraCounter = startLine - 1;
+    let currentPara = [];
+    function flushPara() {
+      if (!currentPara.length) return;
+      paraCounter++;
+      const paraText  = currentPara.join(' ');
+      const processed = processLine(paraText, paraCounter);
+      blocks.push({ type: 'p', lineN: paraCounter, raw: processed });
+      currentPara = [];
+    }
+    lines.forEach(line => {
+      const t = line.trim();
+      if (!t) { flushPara(); return; }
+      currentPara.push(t);
+    });
+    flushPara();
+  } else {
+    const startStanza = parseInt(document.getElementById('start-stanza')?.value||'1',10)||1;
+    const startLine   = parseInt(document.getElementById('start-line')?.value||'1',10)||1;
+    let stanzaCounter = startStanza;
+    let lineCounter   = startLine - 1;
+    let currentLg     = [];
+    function flushLg() {
+      if (currentLg.length) blocks.push({ type: 'lg', stanzaN: stanzaCounter, lines: currentLg });
+      currentLg = [];
+    }
+    lines.forEach(line => {
+      const t = line.trim();
+      if (!t) { flushLg(); stanzaCounter++; return; }
+      lineCounter++;
+      currentLg.push({ lineN: lineCounter, raw: processLine(t, lineCounter) });
+    });
+    flushLg();
+  }
+  return blocks;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RENDERING DEL TESTO CRITICO (pannello destro)
+   Converte la struttura interna in HTML di pubblicazione
+   con marker per note (rosso) e apparato (blu).
+═══════════════════════════════════════════════════════ */
+function renderBlock(block) {
+  if (block.type === 'lg') {
+    const linesHtml = block.lines.map(l =>
+      `<div class="tei-l" data-line-n="${l.lineN}" style="display:flex;gap:1.2em;align-items:baseline;">
+        <span style="font-size:0.7em;font-family:'Source Sans 3',sans-serif;color:var(--muted);min-width:1.5em;text-align:right;user-select:none">${l.lineN}</span>
+        <span>${renderInline(l.raw)}</span>
+       </div>`
+    ).join('');
+    return `<div class="tei-lg" style="margin:0.5em 0">${linesHtml}</div>`;
+  }
+  if (block.type === 'p') {
+    return `<p>${renderInline(block.raw)}</p>`;
+  }
+  return '';
+}
+
+function renderInline(raw) {
+  // raw can be a mix of string pieces and {appId,...} objects from parseApp
+  // Since processLine returns a string with parseApp results inline, we need
+  // to handle the fact that parseApp now returns an object but processLine
+  // joined them as strings. We re-parse here for display.
+  // Actually processLine returns a string. We intercept at a higher level.
+  // renderInline just receives a TEI-like string from processLine and
+  // converts <app> elements to display spans.
+  return raw
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+    // For display we don't use the raw TEI — we render from the structured data
+    // This function receives the already-processed string. Just return it for now;
+    // actual rendering with markers is done in buildCritHtml() below.
+    ;
+}
+
+/* ─── Render pipeline: compactToStructured → HTML con markers ─── */
+function buildCritHtml(input) {
+  // Reset state
+  _compactNotes = [];
+  appEntryMap   = {};
+  appOrder      = [];
+  appIndexMap   = {};
+  newAppCounter = 0;
+  noteContentMap= {};
+  noteIsNew     = {};
+  noteOrder     = [];
+  newNoteCounter= 0;
+  noteIndexMap  = {};
+
+  // Re-implement processLine to capture app data alongside string output
+  let appCounter = 0;
+  _lineAppIdx = 0; _lineNoteIdx = 0; _currentLineN = 0;
+  collectedWits = new Set();
+
+  function renderLineContent(line, lineN) {
+    _currentLineN = lineN; _lineAppIdx = 0; _lineNoteIdx = 0;
+    const useProse = textMode === 'prose';
+    const appIdFn  = () => useProse ? _appIdProse() : _appId();
+    const noteIdFn = () => useProse ? _noteIdProse() : _noteId();
+
+    let html = line;
+
+    // 1. App entries {…}
+    html = html.replace(/\{([^{}]+)\}/g, (match, inner) => {
+      const parsed = parseApp(inner, appIdFn);
+      if (typeof parsed === 'string') return parsed;
+      const { appId, isConj, isNeg, lemText, lemWits, rdgs } = parsed;
+      appCounter++;
+      const label = 'a' + appCounter;
+      appEntryMap[appId] = {
+        lemText, isConj, isNeg,
+        lemWit:    lemWits.replace(/#/g,'').split(' ').join(', '),
+        lemWitRaw: lemWits.replace(/#/g,'').split(' ').join(', '),
+        _fromCompact: true,  // sigla estratta dalla notazione compatta, non dall'utente
+        rdgs
+      };
+      appOrder.push(appId);
+      appIndexMap[appId] = label;
+      const conjCls = isConj ? ' conjecture' : '';
+      return `<span class="tei-app${conjCls}" data-app-id="${appId}">${escHtml(smartQuotes(lemText))}</span>`;
+    });
+
+    // 1b. Applica smartQuotes ai segmenti di testo puro (fuori dai tag HTML)
+    html = html.replace(/>([^<]*)</g, (m, txt) => '>' + smartQuotes(txt) + '<');
+    // Gestisce anche il testo all'inizio della stringa (prima del primo tag)
+    if (!html.startsWith('<')) {
+      const firstTag = html.indexOf('<');
+      if (firstTag > 0) html = smartQuotes(html.slice(0, firstTag)) + html.slice(firstTag);
+      else html = smartQuotes(html);
+    }
+
+    // 2. Note [: testo] su lemma
+    html = html.replace(/\[:\s*([^\]]+?)\]/g, (match, noteText) => {
+      const nId = noteIdFn();
+      _compactNotes.push({ id: nId, text: processHi(escXml(noteText.trim())) });
+      noteContentMap[nId] = noteText.trim();
+      noteIsNew[nId]      = false;
+      noteOrder.push(nId);
+      return `<sup class="note-marker" data-seg-id="${nId}" data-seg-has-text="0">?</sup>`;
+    });
+
+    // 3. Note [testo: nota]
+    html = html.replace(/\[([^\]]+?):\s*([^\]]+?)\]/g, (match, segText, noteText) => {
+      const nId = noteIdFn();
+      _compactNotes.push({ id: nId, text: processHi(escXml(noteText.trim())) });
+      noteContentMap[nId] = noteText.trim();
+      noteIsNew[nId]      = false;
+      noteOrder.push(nId);
+      return `${escHtml(segText.trim())}<sup class="note-marker" data-seg-id="${nId}" data-seg-has-text="1">?</sup>`;
+    });
+
+    // 4. <hi> formatting
+    html = html
+      .replace(/<b>(.*?)<\/b>/gi, '<strong>$1</strong>')
+      .replace(/<i>(.*?)<\/i>/gi, '<em>$1</em>');
+
+    return html;
+  }
+
+  const lines = input.split('\n');
+  let html = '';
+
+  if (textMode === 'prose') {
+    const startLine = parseInt(document.getElementById('start-line')?.value||'1',10)||1;
+    let paraCounter = startLine - 1;
+    let currentPara = [];
+    function flushPara() {
+      if (!currentPara.length) return;
+      paraCounter++;
+      const paraText = currentPara.join(' ');
+      html += `<p>${renderLineContent(paraText, paraCounter)}</p>`;
+      currentPara = [];
+    }
+    lines.forEach(line => {
+      const t = line.trim();
+      if (!t) { flushPara(); return; }
+      currentPara.push(t);
+    });
+    flushPara();
+  } else {
+    const startStanza = parseInt(document.getElementById('start-stanza')?.value||'1',10)||1;
+    const startLine   = parseInt(document.getElementById('start-line')?.value||'1',10)||1;
+    let stanzaCounter = startStanza;
+    let lineCounter   = startLine - 1;
+    let lgLines       = [];
+    function flushLg() {
+      if (!lgLines.length) return;
+      const linesHtml = lgLines.map(l =>
+        `<div class="tei-l" data-line-n="${l.n}" style="display:flex;gap:1.2em;align-items:baseline;">
+          <span style="font-size:0.7em;font-family:'Source Sans 3',sans-serif;color:var(--muted);min-width:1.5em;text-align:right;user-select:none">${l.n}</span>
+          <span>${l.h}</span>
+         </div>`).join('');
+      html += `<div class="tei-lg" style="margin:0.5em 0">${linesHtml}</div>`;
+      lgLines = [];
+    }
+    lines.forEach(line => {
+      const t = line.trim();
+      if (!t) { flushLg(); stanzaCounter++; return; }
+      lineCounter++;
+      lgLines.push({ n: lineCounter, h: renderLineContent(t, lineCounter) });
+    });
+    flushLg();
+  }
+
+  // Assegna numeri alle note
+  recalculateNoteNumbers();
+
+  return html;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONVERT (entry point dal pulsante)
+═══════════════════════════════════════════════════════ */
+function convert() {
+  const input = getEditorText().trim();
+  if (!input) { showMsg('Inserisci il testo nel pannello sinistro.'); return; }
+
+  closeNoteDrawer();
+  closeAppDrawer();
+
+  try {
+    const html = buildCritHtml(input);
+    const editor = document.getElementById('crit-editor');
+    editor.innerHTML = html || '<p></p>';
+    // Ricollega noteOrder dopo che il DOM è inserito nell'editor
+    recalculateNoteNumbers();
+    updateStatus(`Testo generato — ${appOrder.length} entrate apparato, ${noteOrder.length} note.`);
+    updateWordCount();
+  } catch(e) {
+    console.error('convert():', e);
+    showMsg('Errore: ' + e.message);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   NOTE — gestione (uguale al converter interpretativo)
+═══════════════════════════════════════════════════════ */
+function recalculateNoteNumbers() {
+  let counter = 0;
+  noteIndexMap = {};
+  noteOrder    = [];
+  document.querySelectorAll('#crit-editor sup.note-marker').forEach(sup => {
+    const sid = sup.getAttribute('data-seg-id');
+    if (sid) {
+      counter++;
+      noteIndexMap[sid] = counter;
+      noteOrder.push(sid);
+      sup.textContent = counter;
+    }
+  });
+}
+
+function addNote() {
+  const editor = document.getElementById('crit-editor');
+  if (!editor.textContent && !editor.innerHTML) { showMsg('Genera prima il testo.'); return; }
+  editor.focus();
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) { showMsg('Posiziona il cursore nel testo.'); return; }
+  newNoteCounter++;
+  const sid = `sn_${newNoteCounter}`;
+  const range = sel.getRangeAt(0);
+  range.collapse(false);
+  const sup = document.createElement('sup');
+  sup.className = 'note-marker';
+  sup.setAttribute('data-seg-id', sid);
+  sup.setAttribute('data-seg-has-text', '0');
+  sup.textContent = '?';
+  range.insertNode(sup);
+  const nr = document.createRange(); nr.setStartAfter(sup); nr.collapse(true);
+  sel.removeAllRanges(); sel.addRange(nr);
+  noteContentMap[sid] = ''; noteIsNew[sid] = true;
+  recalculateNoteNumbers();
+  openNoteDrawer(sid);
+  updateWordCount();
+}
+
+function addNoteFromCtxMenu() {
+  hideCtxMenu();
+  if (savedRange) { const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(savedRange); savedRange = null; }
+  addNote();
+}
+
+function openNoteDrawer(sid) {
+  closeAppDrawer(); // un solo cassetto aperto
+  if (activeNoteId && activeNoteId !== sid) {
+    const nd = document.getElementById('note-editor');
+    if (nd) noteContentMap[activeNoteId] = nd.innerHTML;
+  }
+  document.querySelectorAll('#crit-editor sup.note-marker.nd-active').forEach(el => el.classList.remove('nd-active'));
+  const marker = document.querySelector(`#crit-editor sup.note-marker[data-seg-id="${sid}"]`);
+  if (marker) marker.classList.add('nd-active');
+  activeNoteId = sid;
+  renderNoteDrawer();
+  document.getElementById('note-drawer').classList.add('open');
+  setTimeout(() => document.getElementById('note-editor').focus(), 40);
+}
+
+function closeNoteDrawer() {
+  if (activeNoteId) {
+    const nd = document.getElementById('note-editor');
+    if (nd) noteContentMap[activeNoteId] = nd.innerHTML;
+  }
+  document.querySelectorAll('#crit-editor sup.note-marker.nd-active').forEach(el => el.classList.remove('nd-active'));
+  activeNoteId = null;
+  document.getElementById('note-drawer').classList.remove('open');
+}
+
+function renderNoteDrawer() {
+  if (!activeNoteId) return;
+  const idx   = noteOrder.indexOf(activeNoteId);
+  const num   = noteIndexMap[activeNoteId] || '';
+  const isNew = !!noteIsNew[activeNoteId];
+  const total = noteOrder.length;
+  document.getElementById('nd-num').textContent  = num;
+  const lbl = document.getElementById('nd-label');
+  lbl.textContent = isNew ? 'nuova' : 'dal testo';
+  lbl.className   = 'nd-label' + (isNew ? ' new' : '');
+  document.getElementById('note-editor').innerHTML = noteContentMap[activeNoteId] || '';
+  document.getElementById('nd-nav').textContent   = `${idx+1} / ${total}`;
+  document.getElementById('nd-delete').style.display = isNew ? 'inline-block' : 'none';
+}
+
+function navigateNote(dir) {
+  if (!activeNoteId) return;
+  noteContentMap[activeNoteId] = document.getElementById('note-editor').innerHTML;
+  const idx = noteOrder.indexOf(activeNoteId);
+  const ni  = idx + dir;
+  if (ni >= 0 && ni < noteOrder.length) openNoteDrawer(noteOrder[ni]);
+}
+
+function deleteNote() {
+  if (!activeNoteId || !noteIsNew[activeNoteId]) return;
+  const sid = activeNoteId;
+  const marker = document.querySelector(`#crit-editor sup.note-marker[data-seg-id="${sid}"]`);
+  if (marker) marker.remove();
+  delete noteContentMap[sid]; delete noteIsNew[sid];
+  newNoteCounter = Math.max(0, newNoteCounter-1);
+  recalculateNoteNumbers();
+  if (noteOrder.length > 0) {
+    const ni = noteOrder[Math.min(noteOrder.indexOf(sid), noteOrder.length-1)];
+    if (ni && ni !== sid) { openNoteDrawer(ni); return; }
+  }
+  closeNoteDrawer();
+  updateWordCount();
+}
+
+/* ═══════════════════════════════════════════════════════
+   APPARATUS — gestione
+═══════════════════════════════════════════════════════ */
+function recalculateAppNumbers() {
+  let counter = 0;
+  appIndexMap = {};
+  appOrder    = [];
+  document.querySelectorAll('#crit-editor .tei-app').forEach(span => {
+    const aid = span.getAttribute('data-app-id');
+    if (aid && !appOrder.includes(aid)) {
+      counter++;
+      appIndexMap[aid] = 'a' + counter;
+      appOrder.push(aid);
+    }
+  });
+}
+
+function addAppEntry() {
+  const editor = document.getElementById('crit-editor');
+  if (!editor.textContent && !editor.innerHTML) { showMsg('Genera prima il testo.'); return; }
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) { showMsg('Seleziona il testo da usare come lemma.'); return; }
+  const range = sel.getRangeAt(0);
+  const lemText = range.toString().trim();
+  if (!lemText) { showMsg('Seleziona il testo da usare come lemma, poi clicca + Apparato.'); return; }
+
+  // Controlla che la selezione sia nel crit-editor
+  if (!editor.contains(range.commonAncestorContainer)) { showMsg('Seleziona testo nel pannello destro.'); return; }
+
+  newAppCounter++;
+  const appId = `app_${newAppCounter}`;
+  const label = 'a' + (appOrder.length + 1);
+
+  // Wrap la selezione in uno span tei-app
+  const appSpan = document.createElement('span');
+  appSpan.className = 'tei-app';
+  appSpan.setAttribute('data-app-id', appId);
+  try { range.surroundContents(appSpan); }
+  catch(e) {
+    // La selezione attraversa elementi: inserisci solo il marker puntuale
+    range.collapse(false);
+    const frag = document.createDocumentFragment();
+    const placeholder = document.createElement('span');
+    placeholder.className = 'tei-app';
+    placeholder.setAttribute('data-app-id', appId);
+    placeholder.textContent = lemText;
+    frag.appendChild(placeholder);
+    range.insertNode(frag);
+  }
+
+  // Registra
+  appEntryMap[appId] = { lemText, isConj: false, lemWit: '', rdgs: [] };
+  recalculateAppNumbers();
+  openAppDrawer(appId);
+  updateWordCount();
+}
+
+function addAppFromCtxMenu() {
+  hideCtxMenu();
+  if (savedRange) {
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(savedRange); savedRange = null;
+  }
+  addAppEntry();
+}
+
+function openAppDrawer(appId) {
+  closeNoteDrawer(); // un solo cassetto aperto
+
+  // Salva lo stato del cassetto corrente PRIMA di cambiare activeAppId.
+  // Necessario perché rows.innerHTML='' in renderAppDrawer può emettere
+  // eventi change sui <select> rimossi, che verrebbero salvati sotto il
+  // nuovo activeAppId invece del vecchio.
+  if (activeAppId && activeAppId !== appId) saveAppDrawerToMap();
+
+  // Deseleziona il precedente
+  document.querySelectorAll('#crit-editor .tei-app.ad-active')
+    .forEach(el => el.classList.remove('ad-active'));
+  const span = document.querySelector(`#crit-editor .tei-app[data-app-id="${appId}"]`);
+  if (span) span.classList.add('ad-active');
+
+  activeAppId = appId;
+
+  // Il guard blocca saveAppDrawerToMap durante il render, per evitare
+  // che la ricostruzione del DOM scriva dati spuri nell'appEntryMap.
+  _drawerRendering = true;
+  try { renderAppDrawer(); } finally { _drawerRendering = false; }
+
+  document.getElementById('app-drawer').classList.add('open');
+}
+
+function closeAppDrawer() {
+  if (activeAppId) saveAppDrawerToMap();
+  document.querySelectorAll('#crit-editor .tei-app.ad-active')
+    .forEach(el => el.classList.remove('ad-active'));
+  activeAppId = null;
+  document.getElementById('app-drawer').classList.remove('open');
+}
+
+function saveAppDrawerToMap() {
+  if (_drawerRendering || !activeAppId || !appEntryMap[activeAppId]) return;
+  const entry = appEntryMap[activeAppId];
+  const rawWit = document.getElementById('ad-lem-wit').value.trim();
+  if (rawWit !== (baseWit || '')) entry._witSetByUser = true;
+  entry.lemWit    = rawWit;
+  entry.lemWitRaw = rawWit;
+  entry.isConj = document.getElementById('ad-conj').checked;
+  // Leggi rdg rows
+  entry.rdgs = [];
+  document.querySelectorAll('#ad-rdg-rows .rdg-row').forEach(row => {
+    const witRaw = row.querySelector('.rdg-wit').value.trim();
+    const text   = row.querySelector('.rdg-text').value.trim();
+    const type   = row.querySelector('.rdg-type').value;
+    if (witRaw) entry.rdgs.push({ wit: witRaw, witRaw, text, type });
+  });
+  // Aggiorna classe congettura sullo span
+  const span = document.querySelector(`#crit-editor .tei-app[data-app-id="${activeAppId}"]`);
+  if (span) span.classList.toggle('conjecture', entry.isConj);
+}
+
+function renderAppDrawer() {
+  if (!activeAppId || !appEntryMap[activeAppId]) return;
+  const entry = appEntryMap[activeAppId];
+  const label = appIndexMap[activeAppId] || activeAppId;
+  document.getElementById('ad-num').textContent = label;
+  document.getElementById('ad-label').textContent = 'apparato critico';
+  // Pre-compila lemWit con il testimone base se l'entrata è nuova e il campo è vuoto
+  const rawWit   = entry.lemWitRaw || entry.lemWit || '';
+  const displayWitVal = rawWit || (baseWit && !entry._witSetByUser ? baseWit : '');
+  document.getElementById('ad-lem-wit').value    = displayWitVal;
+  document.getElementById('ad-lem-wit').disabled = entry.isConj;
+  document.getElementById('ad-conj').checked     = entry.isConj;
+  document.getElementById('ad-lem-text').textContent = entry.lemText || '';
+
+  const rows = document.getElementById('ad-rdg-rows');
+  rows.innerHTML = '';
+  if (entry.rdgs && entry.rdgs.length) {
+    entry.rdgs.forEach(r => rows.appendChild(makeRdgRow(r.witRaw || r.wit, r.text, r.type)));
+  }
+  if (!entry.rdgs || !entry.rdgs.length) rows.appendChild(makeRdgRow('','',''));
+}
+
+function makeRdgRow(wit, text, type) {
+  // wit può essere la forma normalizzata; witRaw la forma originale con ^
+  const displayWit = wit || '';
+  const row = document.createElement('div');
+  row.className = 'rdg-row';
+  row.innerHTML = `
+    <input type="text" class="rdg-wit" placeholder="es. C" title="Sigla/e testimone/i (più sigle separate da virgola; usa ^ per apice: N^2)" value="${escHtml(displayWit)}">
+    <input type="text" class="rdg-text" placeholder="variante (vuoto = omissione)" value="${escHtml(text||'')}">
+    <select class="rdg-type">
+      <option value=""             ${(!type||type==='')?'selected':''}>—</option>
+      <option value="substantive"  ${type==='substantive' ?'selected':''}>sostanziale</option>
+      <option value="orthographic" ${type==='orthographic'?'selected':''}>ortografica</option>
+    </select>
+    <button class="rdg-del" onclick="this.closest('.rdg-row').remove()" title="Rimuovi variante">✕</button>`;
+  return row;
+}
+
+function addRdgRow() {
+  document.getElementById('ad-rdg-rows').appendChild(makeRdgRow('','',''));
+}
+
+/* ── Barra testimoni ── */
+function toggleWitBar() {
+  const bar = document.getElementById('wit-bar');
+  const btn = document.getElementById('btn-wit-bar');
+  const isOpen = bar.classList.toggle('open');
+  btn.classList.toggle('active2', isOpen);
+  if (isOpen) setTimeout(() => document.getElementById('wit-input').focus(), 40);
+}
+
+function parseWitInput(raw) {
+  // "A, B, C, N^2, D^a" → ['A','B','C','N^2','D^a']
+  return raw.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+}
+
+function onWitInput() {
+  const raw = document.getElementById('wit-input').value;
+  allWitnesses = parseWitInput(raw);
+  const count = document.getElementById('wit-count');
+  if (allWitnesses.length > 0) {
+    count.textContent = allWitnesses.length + ' ms.';
+  } else {
+    count.textContent = '';
+  }
+}
+
+function clearWitBar() {
+  document.getElementById('wit-input').value = '';
+  allWitnesses = [];
+  document.getElementById('wit-count').textContent = '';
+}
+
+function onBaseWitToggle() {
+  const input = document.getElementById('base-wit-input');
+  input.style.display = on ? 'inline-block' : 'none';
+  if (on) {
+    setTimeout(() => input.focus(), 30);
+  } else {
+    baseWit = '';
+    input.value = '';
+  }
+}
+
+function onBaseWitInput() {
+  baseWit = document.getElementById('base-wit-input').value.trim();
+}
+
+function onLemWitInput() {
+  // Deseleziona congettura se si digita una sigla
+  if (document.getElementById('ad-lem-wit').value.trim()) {
+    document.getElementById('ad-conj').checked = false;
+  }
+}
+
+function onConjChange() {
+  const isConj = document.getElementById('ad-conj').checked;
+  document.getElementById('ad-lem-wit').disabled = isConj;
+  if (isConj) document.getElementById('ad-lem-wit').value = '';
+}
+
+function deleteAppEntry() {
+  if (!activeAppId) return;
+  const appId = activeAppId;
+  // Rimuovi span e sup dal DOM
+  const span = document.querySelector(`#crit-editor .tei-app[data-app-id="${appId}"]`);
+  if (span) span.outerHTML = span.textContent; // sostituisce con il solo testo
+  delete appEntryMap[appId];
+  recalculateAppNumbers();
+  closeAppDrawer();
+  updateWordCount();
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONTEXT MENU
+═══════════════════════════════════════════════════════ */
+function hideCtxMenu() {
+  document.getElementById('ctx-menu').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════════
+   SERIALIZZAZIONE NOTE
+═══════════════════════════════════════════════════════ */
+function serializeNoteDivToTei(node) {
+  if (!node) return '';
+  let out = '';
+  Array.from(node.childNodes).forEach(c => {
+    if (c.nodeType === 3) { out += escXml(c.textContent); return; }
+    if (c.nodeType !== 1) return;
+    const t = c.tagName.toLowerCase();
+    const isItalic = t==='em' || t==='i' || (t==='span' && (c.style.fontStyle==='italic'||c.style.fontStyle==='oblique'));
+    const isBold   = t==='strong' || t==='b' || (t==='span' && c.style.fontWeight>='600');
+    if (isItalic) out += `<hi rend="italic">${serializeNoteDivToTei(c)}</hi>`;
+    else if (isBold)  out += `<hi rend="bold">${serializeNoteDivToTei(c)}</hi>`;
+    else out += serializeNoteDivToTei(c);
+  });
+  return out;
+}
+
+function serializeNoteContent(sid) {
+  const html = noteContentMap[sid] || '';
+  const tmp  = document.createElement('div');
+  tmp.innerHTML = html;
+  return serializeNoteDivToTei(tmp);
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXPORT TEI
+   Serializza il pannello destro in XML TEI:
+   struttura tei-lg/tei-l → <lg>/<l>
+   note-marker → <seg xml:id="…"/>
+   tei-app → <app><lem>…</lem><rdg>…</rdg></app>
+═══════════════════════════════════════════════════════ */
+function editorToTei() {
+  // Salva stato cassetti aperti
+  if (activeNoteId) {
+    const nd = document.getElementById('note-editor');
+    if (nd) noteContentMap[activeNoteId] = nd.innerHTML;
+  }
+  if (activeAppId) saveAppDrawerToMap();
+
+  const editor = document.getElementById('crit-editor');
+  const clone  = editor.cloneNode(true);
+
+  function serNode(node) {
+    if (node.nodeType === 3) {
+      const t = node.textContent;
+      if (!t) return '';
+      return escXml(t);
+    }
+    if (node.nodeType !== 1) return '';
+    const tag = node.localName;
+    const cls = node.className || '';
+
+    if (tag === 'strong') return `<hi rend="bold">${serChildren(node)}</hi>`;
+    if (tag === 'em')     return `<hi rend="italic">${serChildren(node)}</hi>`;
+
+    if (tag === 'sup' && cls.includes('note-marker')) {
+      const sid = node.getAttribute('data-seg-id') || '';
+      return sid ? `<seg xml:id="${sid}"/>` : '';
+    }
+
+    if (tag === 'span' && cls.includes('tei-app')) {
+      const appId = node.getAttribute('data-app-id') || '';
+      const entry = appEntryMap[appId];
+      if (!entry) return serChildren(node); // fallback
+      const lemText  = entry.lemText;
+      const isConj   = entry.isConj;
+      const lemWit   = (entry.lemWit || '').trim();
+      // Contenuto del <lem>: se lo span contiene span.tei-app annidati
+      // (caso <app> dentro <lem>), serializza i figli DOM ricorsivamente.
+      // Altrimenti usa il lemText da appEntryMap (più affidabile e preciso).
+      const hasNestedApp = node.querySelector('.tei-app');
+      const lemContent   = hasNestedApp
+        ? serChildren(node)   // ricorsivo: include gli <app> annidati
+        : escXml(lemText);    // stringa piatta: caso normale
+
+      let xml = `<app xml:id="${appId}">\n`;
+      if (isConj) {
+        xml += `      <lem type="conjecture">${lemContent}</lem>\n`;
+      } else {
+        /* Calcola @wit del \x3clem\x3e:
+           1. Se l'utente ha compilato manualmente il campo → usa quello
+           2. Se allWitnesses è dichiarato → complemento: tutti - quelli nei \x3crdg\x3e
+           3. Altrimenti → \x3clem\x3e senza @wit */
+        // Determina il @wit effettivo del lem:
+        // - _witSetByUser: utente ha modificato a mano nel cassetto → ha sempre precedenza
+        // - _fromCompact e allWitnesses dichiarato: ricalcola come complemento
+        // - _fromCompact e allWitnesses vuoto: usa il valore della notazione compatta
+        // - né l'uno né l'altro: lem senza @wit
+        let effectiveLemWit;
+        if (entry._witSetByUser) {
+          effectiveLemWit = lemWit;
+        } else if (entry._fromCompact && allWitnesses.length === 0) {
+          effectiveLemWit = lemWit;
+        } else {
+          effectiveLemWit = '';
+        }
+
+        if (!effectiveLemWit && allWitnesses.length > 0) {
+          // Raccogli i testimoni citati in almeno un <rdg>
+          const rdgWitSet = new Set();
+          (entry.rdgs || []).forEach(r => {
+            if (r.wit) r.wit.split(/[,\s]+/).filter(Boolean)
+              .forEach(w => rdgWitSet.add(w.replace(/^#/,'')));
+          });
+          // Il lemma porta tutti i testimoni NON presenti in nessun <rdg>
+          const lemWits = allWitnesses.filter(w => !rdgWitSet.has(w));
+          effectiveLemWit = lemWits.join(', ');
+        }
+
+        if (!effectiveLemWit) {
+          xml += `      <lem>${lemContent}</lem>\n`;
+        } else {
+          const witAttr = witAttrList(effectiveLemWit).join(' ');
+          xml += `      <lem wit="${witAttr}">${lemContent}</lem>\n`;
+        }
+      }
+      (entry.rdgs || []).forEach(r => {
+        if (!r.wit) return;
+        const witAttr  = witAttrList(r.wit).join(' ');
+        const typeAttr = r.type ? ` type="${r.type}"` : '';
+        if (!r.text || r.text.trim() === '-') {
+          xml += `      <rdg wit="${witAttr}"/>\n`;
+        } else {
+          xml += `      <rdg wit="${witAttr}"${typeAttr}>${escXml(r.text)}</rdg>\n`;
+        }
+      });
+      xml += `    </app>`;
+      // Se il cursore era dentro il lemma, il <sup class="note-marker"> può essere
+      // finito come figlio di questo <span>. Emettiamo le ancore orfane qui,
+      // immediatamente dopo </app>, senza perderle.
+      node.querySelectorAll('sup.note-marker').forEach(sup => {
+        const sid = sup.getAttribute('data-seg-id') || '';
+        if (sid) xml += `<seg xml:id="${sid}"/>`;
+      });
+      return xml;
+    }
+
+    if (tag === 'div' && cls.includes('tei-lg')) {
+      const lines = Array.from(node.querySelectorAll('.tei-l'));
+      let lgContent = '';
+      lines.forEach((line, i) => {
+        const lineN = line.getAttribute('data-line-n') || (i + 1);
+        const innerSpan = line.querySelector('span:last-child') || line;
+        const lineClone = innerSpan.cloneNode(true);
+        lineClone.querySelectorAll('[style*="user-select:none"]').forEach(el=>el.remove());
+        const lContent = serChildren(lineClone).trim();
+        lgContent += `  <l n="${lineN}">${lContent}</l>\n`;
+      });
+      return `<lg>\n${lgContent}</lg>\n`;
+    }
+
+    if (tag === 'p') {
+      const inner = serChildren(node).trim();
+      if (!inner) return '';
+      return `  <p>${inner}</p>\n`;
+    }
+
+    return serChildren(node);
+  }
+
+  function serChildren(node) {
+    return Array.from(node.childNodes).map(serNode).join('');
+  }
+
+  let tei = `<div type="edition">\n${serChildren(clone)}</div>`;
+
+  // Append note di commento
+  const noteIds = noteOrder.filter(sid => sid in noteContentMap);
+  if (noteIds.length) {
+    let notesXml = '\n';
+    noteIds.forEach(sid => {
+      notesXml += `  <note target="#${sid}">${serializeNoteContent(sid)}</note>\n`;
+    });
+    tei = tei.replace('</div>', notesXml + '</div>');
+  }
+
+  return tei;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXPORT ACTIONS
+═══════════════════════════════════════════════════════ */
+/* ─── Genera il teiHeader con <listWit> dai testimoni rilevati ─── */
+function buildTeiHeader() {
+  const wits = new Set(collectedWits);
+  // Se l'utente ha dichiarato esplicitamente tutti i testimoni,
+  // li include TUTTI nel listWit — anche quelli che compaiono solo nei <lem>
+  // (e non in nessun <rdg>), che altrimenti non sarebbero in collectedWits.
+  if (allWitnesses.length > 0) {
+    allWitnesses.forEach(w => wits.add(w));
+  }
+  if (baseWit) baseWit.split(/[,\s]+/).filter(Boolean).forEach(w => wits.add(w));
+  Object.values(appEntryMap).forEach(entry => {
+    if (entry.lemWit) entry.lemWit.split(/[,\s]+/).filter(Boolean).forEach(w => wits.add(w));
+    (entry.rdgs||[]).forEach(r => {
+      if (r.wit) r.wit.split(/[,\s]+/).filter(Boolean).forEach(w => wits.add(w.replace(/^#/,'')));
+    });
+  });
+  const witList = Array.from(wits).filter(Boolean).sort();
+  const listWit = witList.map(w => {
+    // Solo le sigle con ^ ottengono la resa con <hi rend="sup">
+    // N^2 → N<hi rend="sup">2</hi>;  N2 → N2 (invariato)
+    const label = w.includes('^')
+      ? escXml(w).replace(/\^(\w+)/g, '<hi rend="sup">$1</hi>')
+      : escXml(w);
+    return `        <witness xml:id="${escXml(w)}">${label}</witness>`;
+  }).join('\n');
+  return `<TEI xmlns="http://www.tei-c.org/ns/1.0">
+<teiHeader>
+  <fileDesc>
+    <titleStmt><title>Edizione critica</title></titleStmt>
+    <publicationStmt><p>Generato da Converter Edizione Critica</p></publicationStmt>
+    <sourceDesc>
+      <listWit>
+${listWit}
+      </listWit>
+    </sourceDesc>
+  </fileDesc>
+</teiHeader>
+<text><body>
+`;
+}
+
+function wrapWithHeader(divTei) {
+  if (!document.getElementById('toggle-header')?.checked) {
+    return `<?xml version="1.0" encoding="UTF-8"?>\n${divTei}`;
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n${buildTeiHeader()}${divTei}\n</body></text>\n</TEI>`;
+}
+
+function copyTei() {
+  const full = wrapWithHeader(editorToTei());
+  navigator.clipboard.writeText(full).then(() => updateStatus('TEI copiato negli appunti.'))
+    .catch(() => showMsg('Impossibile copiare — usa Scarica .xml'));
+}
+
+function downloadTei() {
+  const full = wrapWithHeader(editorToTei());
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([full], { type: 'application/xml' }));
+  a.download = 'edizione-critica.xml';
+  a.click();
+}
+
+/* ── TEI PREVIEW MODAL ── */
+let _lastTei = '';
+
+function highlightTei(xml) {
+  return escHtml(xml)
+    .replace(/&lt;!--([\s\S]*?)--&gt;/g, '<span class="xc">&lt;!--$1--&gt;</span>')
+    .replace(/&lt;(\/?)([\w:]+)((?:\s+[\w:]+="[^"]*")*)\s*(\/??)&gt;/g, (m, slash, tag, attrs, selfClose) => {
+      const tc = tag==='lem' ? 'xl' : tag==='rdg' ? 'xr' : tag==='note' ? 'xe' : 'xt';
+      const ah = attrs.replace(/([\w:]+)="([^"]*)"/g, '<span class="xa">$1</span>=<span class="xv">"$2"</span>');
+      return `<span class="xt">&lt;${slash}</span><span class="${tc}">${tag}</span>${ah}<span class="xt">${selfClose}&gt;</span>`;
+    });
+}
+
+function previewTei() {
+  _lastTei = wrapWithHeader(editorToTei());
+  document.getElementById('tei-preview-content').innerHTML = highlightTei(_lastTei);
+  document.getElementById('tei-modal').classList.add('open');
+}
+
+function closeTeiModal() {
+  document.getElementById('tei-modal').classList.remove('open');
+}
+
+function closeModalOutside(e) {
+  if (e.target.id === 'tei-modal') closeTeiModal();
+}
+
+function copyTeiFromModal() {
+  navigator.clipboard.writeText(_lastTei)
+    .then(() => { updateStatus('TEI copiato.'); closeTeiModal(); })
+    .catch(() => showMsg('Impossibile copiare.'));
+}
+
+function downloadTeiFromModal() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([_lastTei], { type: 'application/xml' }));
+  a.download = 'edizione-critica.xml';
+  a.click();
+  closeTeiModal();
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILITIES UI
+═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   CARICA TEI PRE-ESISTENTE
+   Parsa un <div type="edition"> (o un <TEI> completo) e
+   popola il pannello destro con markup + appEntryMap +
+   noteContentMap, pronti per la modifica. Funzione
+   completamente additiva — nessuna modifica alle funzioni
+   di notazione compatta.
+═══════════════════════════════════════════════════════ */
+
+function openLoadTeiModal() {
+  document.getElementById('load-tei-input').value = '';
+  document.getElementById('load-tei-modal').classList.add('open');
+  setTimeout(() => document.getElementById('load-tei-input').focus(), 80);
+}
+
+function closeLoadTeiModal() {
+  document.getElementById('load-tei-modal').classList.remove('open');
+}
+
+function closeLoadModalOutside(e) {
+  if (e.target.id === 'load-tei-modal') closeLoadTeiModal();
+}
+
+function loadTeiFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('load-tei-input').value = e.target.result;
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset so same file can be re-loaded
+}
+
+function doLoadTei() {
+  const raw = document.getElementById('load-tei-input').value.trim();
+  if (!raw) { showMsg('Incolla il TEI prima di caricare.'); return; }
+  try {
+    loadCritTei(raw);
+    closeLoadTeiModal();
+  } catch(e) {
+    console.error('loadCritTei:', e);
+    showMsg('Errore nel parsing del TEI: ' + e.message);
+  }
+}
+
+function loadCritTei(xmlString) {
+  const NS = 'http://www.tei-c.org/ns/1.0';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlString, 'application/xml');
+
+  // Errore di parsing XML
+  const parseErr = doc.querySelector('parsererror');
+  if (parseErr) throw new Error('XML non valido: ' + parseErr.textContent.slice(0, 120));
+
+  // Trova il <div type="edition"> — sia dentro <TEI> sia come radice
+  const edDiv =
+    doc.querySelector('[type="edition"]') ||
+    doc.getElementsByTagNameNS(NS, 'div')[0] ||
+    doc.querySelector('div');
+  if (!edDiv) throw new Error('Nessun <div type="edition"> trovato.');
+
+  // Reset stato (identico a buildCritHtml)
+  closeNoteDrawer();
+  closeAppDrawer();
+  appEntryMap   = {};
+  appOrder      = [];
+  appIndexMap   = {};
+  newAppCounter = 0;
+  noteContentMap= {};
+  noteIsNew     = {};
+  noteOrder     = [];
+  newNoteCounter= 0;
+  noteIndexMap  = {};
+  collectedWits = new Set();
+  let appCounter  = 0;
+
+  /* ── Helpers ── */
+  function getLocalName(node) { return node.localName || node.nodeName.replace(/^.*:/,''); }
+  function attr(node, name) { return node.getAttribute(name) || node.getAttributeNS('http://www.w3.org/XML/1998/namespace', name.replace('xml:','')) || node.getAttribute(name.replace('xml:','')) || ''; }
+
+  /* ── Raccoglie <note target="#id"> dal <div> ── */
+  const noteEls = Array.from(edDiv.children).filter(c => getLocalName(c) === 'note' || getLocalName(c) === 'note');
+  // Cerca anche fuori dal div se il file è un TEI completo
+  const allNotes = Array.from(doc.getElementsByTagNameNS(NS, 'note'))
+    .concat(Array.from(doc.querySelectorAll('note')));
+  const noteMap = {}; // target id → serialized html
+  allNotes.forEach(n => {
+    const target = attr(n, 'target').replace(/^#/, '');
+    if (target) noteMap[target] = serializeNoteNodeToHtml(n);
+  });
+
+  /* ── Serializza <note> in HTML (per noteContentMap) ── */
+  function serializeNoteNodeToHtml(node) {
+    let out = '';
+    Array.from(node.childNodes).forEach(c => {
+      if (c.nodeType === 3) { out += escHtml(c.textContent); return; }
+      if (c.nodeType !== 1) return;
+      const ln = getLocalName(c);
+      const rend = attr(c, 'rend');
+      if (ln === 'hi') {
+        const tag = rend === 'italic' ? 'em' : rend === 'bold' ? 'strong' : 'span';
+        out += `<${tag}>${serializeNoteNodeToHtml(c)}</${tag}>`;
+      } else {
+        out += serializeNoteNodeToHtml(c);
+      }
+    });
+    return out;
+  }
+
+  /* ── Walker inline: converte nodi TEI in HTML del pannello destro ── */
+  function walkInline(parentNode) {
+    let html = '';
+    Array.from(parentNode.childNodes).forEach(node => {
+      if (node.nodeType === 3) {
+        html += smartQuotes(escHtml(node.textContent));
+        return;
+      }
+      if (node.nodeType !== 1) return;
+      const ln = getLocalName(node);
+
+      if (ln === 'app') {
+        // ── <app> ──
+        appCounter++;
+        const appId = attr(node, 'xml:id') || `app_loaded_${appCounter}`;
+        const lemEl  = node.getElementsByTagNameNS(NS, 'lem')[0] || node.querySelector('lem');
+
+        // Solo i <rdg> figli diretti — esclude quelli degli <app> annidati nel <lem>
+        const rdgEls = Array.from(node.childNodes).filter(c =>
+          c.nodeType === 1 && getLocalName(c) === 'rdg'
+        );
+
+        const lemText  = lemEl ? lemEl.textContent : '';
+        const isConj   = lemEl && attr(lemEl, 'type') === 'conjecture';
+        const lemWitRaw = lemEl ? attr(lemEl, 'wit') : '';
+        const lemWit    = lemWitRaw.replace(/#/g, '').replace(/\s+/g, ', ');
+
+        const rdgs = rdgEls.map(r => ({
+          wit:    attr(r, 'wit').replace(/#/g,'').replace(/\s+/g,', '),
+          witRaw: attr(r, 'wit').replace(/#/g,'').replace(/\s+/g,', '),
+          text: r.textContent,
+          type: attr(r, 'type') || ''
+        }));
+
+        // Registra testimoni
+        lemWit.split(',').map(w=>w.trim()).filter(Boolean).forEach(w=>collectedWits.add(w));
+        rdgs.forEach(r => r.wit.split(',').map(w=>w.trim()).filter(Boolean).forEach(w=>collectedWits.add(w)));
+
+        appEntryMap[appId] = { lemText, isConj, lemWit, rdgs };
+        appOrder.push(appId);
+        appIndexMap[appId] = 'a' + appCounter;
+
+        const conjCls = isConj ? ' conjecture' : '';
+        // Renderizza i figli del <lem> ricorsivamente: un <app> annidato nel <lem>
+        // produce il proprio span.tei-app cliccabile (struttura speculare al viewer).
+        const lemHtml = lemEl ? walkInline(lemEl) : '';
+        html += `<span class="tei-app${conjCls}" data-app-id="${appId}">${lemHtml}</span>`;
+        return;
+      }
+
+      if (ln === 'seg') {
+        // ── <seg xml:id> = ancora nota ──
+        const sid = attr(node, 'xml:id');
+        if (sid) {
+          // Registra la nota se presente in noteMap
+          if (noteMap[sid] !== undefined) {
+            noteContentMap[sid] = noteMap[sid];
+            noteIsNew[sid]      = false;
+            noteOrder.push(sid);
+          }
+          const inner = walkInline(node); // testo contenuto (spesso vuoto)
+          html += inner;
+          html += `<sup class="note-marker" data-seg-id="${sid}" data-seg-has-text="${inner?'1':'0'}">?</sup>`;
+        } else {
+          html += walkInline(node);
+        }
+        return;
+      }
+
+      if (ln === 'hi') {
+        const rend = attr(node, 'rend');
+        const inner = walkInline(node);
+        if (rend === 'italic') html += `<em>${inner}</em>`;
+        else if (rend === 'bold') html += `<strong>${inner}</strong>`;
+        else html += inner;
+        return;
+      }
+
+      if (ln === 'note') return; // gestita da noteMap
+
+      // fallback: percorri i figli
+      html += walkInline(node);
+    });
+    return html;
+  }
+
+  /* ── Costruisce HTML del pannello destro ── */
+  let edHtml = '';
+  let lineCounter  = 0;
+  let isProseMode  = false;
+
+  // Scansiona i blocchi figli del <div type="edition">
+  Array.from(edDiv.children).forEach(block => {
+    const ln = getLocalName(block);
+    if (ln === 'note') return; // già gestite
+
+    if (ln === 'lg') {
+      const lEls = Array.from(block.getElementsByTagNameNS(NS, 'l').length
+        ? block.getElementsByTagNameNS(NS, 'l')
+        : block.querySelectorAll('l'));
+      const linesHtml = lEls.map(lEl => {
+        lineCounter++;
+        const n = attr(lEl, 'n') || lineCounter;
+        const inner = walkInline(lEl);
+        return `<div class="tei-l" data-line-n="${n}" style="display:flex;gap:1.2em;align-items:baseline;">
+          <span style="font-size:0.7em;font-family:'Source Sans 3',sans-serif;color:var(--muted);min-width:1.5em;text-align:right;user-select:none">${n}</span>
+          <span>${inner}</span></div>`;
+      }).join('');
+      edHtml += `<div class="tei-lg" style="margin:0.5em 0">${linesHtml}</div>`;
+      return;
+    }
+
+    if (ln === 'p' || ln === 'ab') {
+      isProseMode = true;
+      lineCounter++;
+      const n = attr(block, 'n') || lineCounter;
+      edHtml += `<p data-para-n="${n}">${walkInline(block)}</p>`;
+      return;
+    }
+  });
+
+  // Aggiorna modalità poesia/prosa coerentemente con il contenuto
+  if (isProseMode) setTextMode('prose');
+  else             setTextMode('poetry');
+
+  // Popola il pannello destro
+  const editor = document.getElementById('crit-editor');
+  editor.innerHTML = edHtml || '<p></p>';
+
+  // Ricalcola indici
+  recalculateNoteNumbers();
+  recalculateAppNumbers();
+
+  // Attiva toggle header se il sorgente era un TEI completo con teiHeader
+  const hasHeader = !!doc.querySelector('teiHeader') || !!doc.getElementsByTagNameNS(NS, 'teiHeader')[0];
+  if (hasHeader) document.getElementById('toggle-header').checked = true;
+
+  // Sincronizza newAppCounter al massimo suffisso numerico degli id già caricati.
+  // Senza questo, addAppEntry() genererebbe "app_1" anche se app_1 esiste già,
+  // producendo xml:id duplicati nel TEI esportato.
+  let maxLoaded = 0;
+  Object.keys(appEntryMap).forEach(id => {
+    const m = id.match(/(\d+)$/);
+    if (m) maxLoaded = Math.max(maxLoaded, parseInt(m[1], 10));
+  });
+  newAppCounter = maxLoaded;
+
+  const nApp  = appOrder.length;
+  const nNote = noteOrder.length;
+  updateStatus(`TEI caricato — ${nApp} ${nApp===1?'entrata apparato':'entrate apparato'}, ${nNote} ${nNote===1?'nota':'note'}.`);
+  updateWordCount();
+
+  // Svuota il pannello sinistro (non si usa la notazione compatta in questa modalità)
+  document.getElementById('editor-area').innerHTML = '';
+}
+
+/* ── Intercettazione paste di XML nel pannello sinistro ── */
+/* Se l'utente incolla direttamente XML nell'editor sinistro, apri il modal. */
+function _interceptXmlPaste(e) {
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain').trim();
+  if (text.startsWith('<?xml') || text.startsWith('<TEI') || /^<div[^>]*type="edition"/.test(text)) {
+    e.preventDefault();
+    document.getElementById('load-tei-input').value = text;
+    document.getElementById('load-tei-modal').classList.add('open');
+    showMsg('XML rilevato — clicca "Carica →" per procedere.');
+  }
+}
+
+function clearLeft() {
+  document.getElementById('editor-area').innerHTML = '';
+  const editor = document.getElementById('crit-editor');
+  editor.innerHTML = '';
+  closeNoteDrawer(); closeAppDrawer();
+  noteIndexMap = {}; noteContentMap = {}; noteIsNew = {}; noteOrder = []; newNoteCounter = 0;
+  appEntryMap = {}; appOrder = []; appIndexMap = {}; newAppCounter = 0;
+  // allWitnesses e il campo wit-input vengono deliberatamente preservati:
+  // l'utente potrebbe riusare la stessa lista per un nuovo testo.
+  updateStatus('Pronto'); updateWordCount();
+}
+
+/* ═══════════════════════════════════════════════════════
+   RINUMERAZIONE POST-ANNOTAZIONE
+   Aggiorna solo numeri visivi e data-line-n/data-para-n
+   senza toccare testo, marker di nota o di apparato.
+   Gli xml:id delle entrate apparatus rimangono invariati
+   (usano id progressivi puri: a1, a2, … indipendenti dal
+   numero di verso/paragrafo).
+═══════════════════════════════════════════════════════ */
+function renumber() {
+  const editor = document.getElementById('crit-editor');
+  if (!editor.innerHTML.trim()) { showMsg('Genera prima il testo.'); return; }
+
+  const startLine = parseInt(document.getElementById('start-line')?.value || '1', 10) || 1;
+
+  if (textMode === 'prose') {
+    // Prosa: rinumera i <p> che hanno numero visivo
+    const paras = Array.from(editor.querySelectorAll('p'));
+    if (!paras.length) { showMsg('Nessun paragrafo da rinumerare.'); return; }
+    paras.forEach((p, i) => {
+      p.setAttribute('data-para-n', startLine + i);
+    });
+    updateStatus(`Paragrafi rinumerati da ${startLine}.`);
+  } else {
+    // Poesia: rinumera tutti i .tei-l in ordine DOM
+    const lines = Array.from(editor.querySelectorAll('.tei-l'));
+    if (!lines.length) { showMsg('Nessun verso da rinumerare.'); return; }
+
+    const startStanza = parseInt(document.getElementById('start-stanza')?.value || '1', 10) || 1;
+    // Conta le strofe (tei-lg) per rinumerarle
+    const groups = Array.from(editor.querySelectorAll('.tei-lg'));
+
+    let globalLine = startLine - 1;
+    let stanzaN    = startStanza - 1;
+
+    groups.forEach(lg => {
+      stanzaN++;
+      const linesInLg = Array.from(lg.querySelectorAll('.tei-l'));
+      linesInLg.forEach(line => {
+        globalLine++;
+        // Aggiorna il numero visivo (primo <span> figlio diretto)
+        const numSpan = line.querySelector('span:first-child');
+        if (numSpan) numSpan.textContent = globalLine;
+        line.setAttribute('data-line-n', globalLine);
+      });
+    });
+    updateStatus(`Versi rinumerati da ${startLine} (strofe da ${startStanza}).`);
+  }
+  updateWordCount();
+}
+
+function formatSel(cmd) {
+  document.getElementById('crit-editor').focus();
+  document.execCommand(cmd);
+}
+
+function loadExample() {
+  document.getElementById('editor-area').innerHTML = '';
+  document.getElementById('editor-area').focus();
+  document.execCommand('insertText', false,
+`Voi che ascoltate in {A, C: rime (B: note)} sparse il {A, C: suono (B*: sono)}
+di quei {A: sospiri (B: sospiri) (C*: suspiri)} ond'io nudriva 'l core
+in sul mio primo {?: giovenile (A: giovanile) (B: juvenile) (C: -)} errore
+quand'era in parte {A, C: altr'uom (B: -)}[: omissione significativa in B] da quel [ch'i': riferimento autobiografico] sono`);
+}
+
+/* ═══════════════════════════════════════════════════════
+   EVENT LISTENERS
+═══════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  setTextMode('poetry');
+
+  const editor = document.getElementById('crit-editor');
+
+  // Click su note-marker → apri cassetto nota
+  editor.addEventListener('click', e => {
+    const nm = e.target.closest('sup.note-marker');
+    if (nm) { openNoteDrawer(nm.getAttribute('data-seg-id')); return; }
+    const am = e.target.closest('.tei-app');
+    if (am) { const aid = am.getAttribute('data-app-id'); if (aid) openAppDrawer(aid); return; }
+    // Click fuori: chiudi cassetti solo se non nel drawer
+    if (!e.target.closest('#note-drawer, #app-drawer')) {
+      closeNoteDrawer(); closeAppDrawer();
+    }
+  });
+
+  // Ctrl+B / Ctrl+I nel cassetto note
+  document.getElementById('note-editor').addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && (e.key==='b'||e.key==='B')) { e.preventDefault(); document.execCommand('bold'); }
+    if ((e.ctrlKey||e.metaKey) && (e.key==='i'||e.key==='I')) { e.preventDefault(); document.execCommand('italic'); }
+  });
+
+  // Aggiorna noteContentMap mentre l'utente scrive nel cassetto
+  document.getElementById('note-editor').addEventListener('input', () => {
+    if (activeNoteId) noteContentMap[activeNoteId] = document.getElementById('note-editor').innerHTML;
+  });
+
+  // Salva appEntryMap mentre l'utente modifica i campi apparatus
+  document.getElementById('app-drawer').addEventListener('input', () => {
+    if (activeAppId) saveAppDrawerToMap();
+  });
+  document.getElementById('app-drawer').addEventListener('change', () => {
+    if (activeAppId) saveAppDrawerToMap();
+  });
+
+  // Context menu tasto destro
+  editor.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const sel = window.getSelection();
+    savedRange = (sel && sel.rangeCount) ? sel.getRangeAt(0).cloneRange() : null;
+    const menu = document.getElementById('ctx-menu');
+    menu.style.display = 'block';
+    menu.style.left = Math.min(e.clientX, window.innerWidth - menu.offsetWidth - 8) + 'px';
+    menu.style.top  = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8) + 'px';
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#ctx-menu')) hideCtxMenu();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { hideCtxMenu(); closeNoteDrawer(); closeAppDrawer(); }
+    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); convert(); }
+  });
+
+  // RTE buttons state
+  document.getElementById('editor-area').addEventListener('keyup', updateRteButtons);
+  document.getElementById('editor-area').addEventListener('mouseup', updateRteButtons);
+  document.getElementById('editor-area').addEventListener('input', updateRteButtons);
+  document.getElementById('editor-area').addEventListener('paste', _interceptXmlPaste);
+  document.getElementById('crit-editor').addEventListener('input', updateWordCount);
+});
+</script>
+
+<!-- RESIZER DRAG LOGIC (identico a ed_critica) -->
+<script>
+(function () {
+  const resizer  = document.getElementById('col-resizer');
+  const colLeft  = document.getElementById('panel-left');
+  const mainEl   = document.querySelector('.workspace');
+
+  let dragging = false;
+  let startX   = 0;
+  let startW   = 0;
+
+  resizer.addEventListener('mousedown', function (e) {
+    dragging = true;
+    startX   = e.clientX;
+    startW   = colLeft.getBoundingClientRect().width;
+    resizer.classList.add('dragging');
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', function (e) {
+    if (!dragging) return;
+    const mainW = mainEl.getBoundingClientRect().width;
+    const delta = e.clientX - startX;
+    const newW  = Math.min(Math.max(startW + delta, mainW * 0.15), mainW * 0.85);
+    const pct   = (newW / mainW * 100).toFixed(2) + '%';
+    mainEl.style.setProperty('--left-w', pct);
+  });
+
+  document.addEventListener('mouseup', function () {
+    if (!dragging) return;
+    dragging = false;
+    resizer.classList.remove('dragging');
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
+  });
+
+  /* Touch support */
+  resizer.addEventListener('touchstart', function (e) {
+    dragging = true;
+    startX   = e.touches[0].clientX;
+    startW   = colLeft.getBoundingClientRect().width;
+    resizer.classList.add('dragging');
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('touchmove', function (e) {
+    if (!dragging) return;
+    const mainW = mainEl.getBoundingClientRect().width;
+    const delta = e.touches[0].clientX - startX;
+    const newW  = Math.min(Math.max(startW + delta, mainW * 0.15), mainW * 0.85);
+    const pct   = (newW / mainW * 100).toFixed(2) + '%';
+    mainEl.style.setProperty('--left-w', pct);
+  }, { passive: true });
+
+  document.addEventListener('touchend', function () {
+    dragging = false;
+    resizer.classList.remove('dragging');
+  });
+
+  /* Doppio clic: ripristina 50/50 */
+  resizer.addEventListener('dblclick', function () {
+    mainEl.style.removeProperty('--left-w');
+  });
+})();
+</script>
+
+</body>
+</html>

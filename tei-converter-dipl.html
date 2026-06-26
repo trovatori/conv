@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TEI Converter Edizione diplomatica/interpretativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent:  #a03f33;
+    --accent2: #3a6b8a;
+    --bg:      #fbf9f4;
+    --panel:   #f5f3ee;
+    --text:    #1a1410;
+    --muted:   #6b7280;
+    --border:  #e2ddd6;
+    --mono:    "JetBrains Mono", monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: "Source Sans 3", sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+  header { background: var(--text); color: white; padding: 14px 32px; display: flex; align-items: baseline; justify-content: space-between; flex-shrink: 0; }
+  header .hd-title { font-family: "Source Serif 4", serif; font-size: 1.05rem; font-weight: 300; font-style: italic; }
+  .hd-title strong { font-style: normal; font-weight: 700; color: #e8c4be; }
+
+  .guide { background: var(--panel); border-bottom: 1px solid var(--border); padding: 10px 32px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; flex-shrink: 0; }
+  .guide-label { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); flex-shrink: 0; cursor: pointer; background: none; border: none; padding: 0; display: flex; align-items: center; gap: 6px; font-family: inherit; }
+  .guide-items { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .guide-items.hidden { display: none !important; }
+  .guide-item { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .guide-item code { font-family: var(--mono); font-size: 10.5px; background: white; border: 1px solid var(--border); padding: 1px 4px; border-radius: 2px; color: var(--text); }
+
+  .mode-bar { display: flex; align-items: center; border-bottom: 1px solid var(--border); background: white; flex-shrink: 0; padding: 0 8px; }
+  .mode-btn { padding: 10px 16px; font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; border: none; background: none; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+  .mode-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .mode-btn:hover:not(.active) { color: var(--text); }
+
+  .workspace { display: flex; flex: 1; min-height: 0; }
+  .panel { display: flex; flex-direction: column; flex: 1; min-width: 0; border-right: 1px solid var(--border); }
+  .panel:last-child { border-right: none; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; }
+  .panel-label { font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+  .panel-actions { display: flex; gap: 6px; }
+
+  .rte-toolbar { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; flex-wrap: wrap; }
+  .rte-btn { width: 26px; height: 26px; border-radius: 3px; font-size: 12px; font-weight: 700; font-family: "Source Serif 4", serif; border: 1px solid var(--border); background: white; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+  .rte-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rte-btn.active { background: rgba(160,63,51,0.08); border-color: var(--accent); color: var(--accent); }
+  .rte-divider { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+  .rte-label { font-size: 8px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .rte-select { font-family: "Source Sans 3", sans-serif; font-size: 9px; font-weight: 700; padding: 3px 6px; border: 1px solid var(--border); border-radius: 3px; background: white; color: var(--text); cursor: pointer; }
+  .rte-input { width: 42px; font-family: var(--mono); font-size: 11px; padding: 3px 5px; border: 1px solid var(--border); border-radius: 3px; background: white; color: var(--text); text-align: center; }
+
+  #editor-area {
+    flex: 1; min-height: 0; overflow-y: auto;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.75;
+    padding: 20px; outline: none; white-space: pre-wrap; word-break: break-word;
+    color: var(--text); background: white; font-style: normal;
+  }
+  #editor-area:empty::before { content: attr(data-placeholder); color: #bbb; pointer-events: none; }
+  #editor-area b, #editor-area strong { font-weight: 700; }
+  #editor-area i, #editor-area em { font-style: italic; }
+
+  .output-box { flex: 1; min-height: 0; overflow-y: auto; font-family: var(--mono); font-size: 12px; line-height: 1.75; padding: 20px; background: white; white-space: pre-wrap; word-break: break-word; color: var(--text); font-style: normal; }
+  .output-box span { font-style: normal; }
+  .xt { color: #888; }
+  .xa { color: var(--accent); }
+  .xv { color: var(--accent2); }
+  .xc { color: #999; }
+
+  .btn { font-family: "Source Sans 3", sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; border: 1px solid var(--border); background: white; color: var(--muted); cursor: pointer; transition: all .15s; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn.primary:hover { background: #8a3429; }
+  .btn.secondary { background: var(--accent2); color: white; border-color: var(--accent2); }
+
+  .msg { font-size: 10px; padding: 4px 12px; border-radius: 3px; display: none; }
+  .msg.ok  { background: #e8f5e9; color: #2a6e3f; display: block; }
+  .msg.err { background: #fdecea; color: var(--accent); display: block; }
+
+  footer { border-top: 1px solid var(--border); background: var(--panel); padding: 8px 32px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #bbb; flex-shrink: 0; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer code { font-family: var(--mono); font-size: 9px; color: #888; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,20,16,0.55); backdrop-filter: blur(3px); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; width: 520px; max-width: 95vw; padding: 28px 32px; }
+  .modal h2 { font-family: "Source Serif 4", serif; font-size: 1.15rem; font-weight: 400; margin-bottom: 20px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 8px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+  .field input, .field textarea { width: 100%; font-family: "Source Serif 4", serif; font-size: 0.95rem; padding: 7px 10px; border: 1px solid var(--border); border-radius: 3px; background: white; color: var(--text); }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+  .field textarea { min-height: 72px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-title"><strong>TEI Converter Edizione diplomatica/interpretativa</strong> — notazione compatta ↔ XML</div>
+  <a href="tei-converter-dipl-guida.html"
+     style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#aaa;text-decoration:none;transition:color .15s"
+     onmouseover="this.style.color='#e8c4be'" onmouseout="this.style.color='#aaa'">Guida all'uso →</a>
+</header>
+
+<div class="guide">
+  <button class="guide-label" id="guide-toggle" onclick="toggleGuide()">
+    Sintassi <span id="guide-arrow" style="font-size:9px;transition:transform .2s">▾</span>
+  </button>
+  <div class="guide-items hidden" id="guide-items">
+    <div class="guide-item"><code>parola[: nota]</code> → <code>parola&lt;seg xml:id="L_41v-3.1"/&gt;</code> + <code>&lt;note&gt;</code> a fine carta</div>
+    <div class="guide-item"><code>{costrutto}[: nota]</code> → <code>&lt;choice&gt;…&lt;/choice&gt;&lt;seg xml:id="L_41v-3.2"/&gt;</code> + <code>&lt;note&gt;</code> a fine carta</div>
+    <div class="guide-item"><code>[sigla]</code> cambio pagina → <code>&lt;pb facs="#sigla"/&gt;</code></div>
+    <div class="guide-item"><code>/</code> riga vuota nel ms.</div>
+    <div class="guide-item"><code>{-testo}</code> cancellatura → <code>&lt;del&gt;</code></div>
+    <div class="guide-item"><code>{-del&gt;add}</code> sostituzione per sovrascrittura → <code>&lt;subst&gt;</code></div>
+    <div class="guide-item"><code>{*testo}</code> danno/lacuna → <code>&lt;damage&gt;</code></div>
+    <div class="guide-item"><code>{?testo}</code> lettura incerta → <code>&lt;unclear&gt;</code></div>
+    <div class="guide-item"><code>{&lt;testo&gt;}</code> integrazione → <code>&lt;supplied&gt;</code></div>
+    <div class="guide-item"><code>{abbr/expan}</code> abbreviazione → <code>&lt;choice&gt;&lt;abbr&gt;&lt;expan&gt;</code></div>
+    <div class="guide-item"><code>{orig=reg}</code> forma orig./regolarizzata → <code>&lt;choice&gt;&lt;orig&gt;&lt;reg&gt;</code></div>
+    <div class="guide-item"><code>{+^ testo}</code> aggiunta sopra riga</div>
+    <div class="guide-item"><code>{+^ {abbr/expan}}</code> aggiunta con costrutto annidato</div>
+    <div class="guide-item"><code>{+&gt; testo}</code> margine destro</div>
+    <div class="guide-item"><code>{+&lt; testo}</code> margine sinistro</div>
+    <div class="guide-item"><code>{+_ testo}</code> margine inferiore</div>
+    <div class="guide-item">riga vuota → cambio <code>&lt;p&gt;</code></div>
+    <div class="guide-item"><code>$</code> apre/chiude blocco in versi → <code>&lt;lg&gt;</code></div>
+    <div class="guide-item"><code>|</code> confine di verso → <code>&lt;milestone unit="verse"/&gt;</code></div>
+    <div class="guide-item"><code>L = descrizione</code> separatore testimone</div>
+  </div>
+</div>
+
+<div class="mode-bar">
+  <button class="mode-btn active" id="btn-c2t" onclick="setMode('compact2tei')">Compatta → TEI</button>
+  <button class="mode-btn" id="btn-t2c" onclick="setMode('tei2compact')">TEI → Compatta</button>
+  <div style="flex:1"></div>
+  <span id="msg-area" class="msg"></span>
+</div>
+
+<div class="workspace">
+  <div class="panel" id="panel-left">
+    <div class="panel-head">
+      <span class="panel-label" id="label-left">Notazione compatta</span>
+      <div class="panel-actions">
+        <button class="btn" onclick="clearLeft()">Pulisci</button>
+        <button class="btn" onclick="loadExample()">Esempio</button>
+        <button class="btn primary" onclick="convert()">Converti →</button>
+      </div>
+    </div>
+    <div class="rte-toolbar" id="rte-toolbar">
+      <span class="rte-label">Output</span>
+      <select class="rte-select" id="output-type" title="Tipo di output TEI">
+        <option value="diplomatic">Diplomatica</option>
+        <option value="interpretative">Interpretativa</option>
+      </select>
+      <div class="rte-divider"></div>
+      <span class="rte-label">Stile</span>
+      <button class="rte-btn" id="btn-bold"   title="Grassetto (Ctrl+B)" onclick="rteFormat('bold')"><b>B</b></button>
+      <button class="rte-btn" id="btn-italic" title="Corsivo (Ctrl+I)"   onclick="rteFormat('italic')"><i>I</i></button>
+      <div class="rte-divider"></div>
+      <span class="rte-label">Paragrafi</span>
+      <select class="rte-select" id="para-mode">
+        <option value="none">nessun paragrafo</option>
+        <option value="unnumbered">non numerati</option>
+        <option value="continuous">numerazione continua</option>
+        <option value="per-page">numerazione per carta</option>
+      </select>
+      <div class="rte-divider"></div>
+      <span class="rte-label" id="start-lb-label">Dal rigo</span>
+      <input type="number" id="start-lb" value="1" min="1" class="rte-input" title="Numero del primo rigo">
+      <div class="rte-divider"></div>
+      <span class="rte-label">Dal verso</span>
+      <input type="number" id="start-milestone" value="1" min="1" class="rte-input" title="Numero del primo milestone di verso">
+      <div class="rte-divider"></div>
+      <span class="rte-label">Avvolgi</span>
+      <button class="rte-btn" title="Graffe  {…}  (Ctrl+{)" onclick="wrapWith('{','}','')" style="font-family:var(--mono);font-size:11px">{}</button>
+      <button class="rte-btn" title="Cancellatura  {-…}" onclick="wrapWith('{-','}','')" style="font-family:var(--mono);font-size:10px;color:var(--accent)">-</button>
+      <button class="rte-btn" title="Danno  {*…}" onclick="wrapWith('{*','}','')" style="font-family:var(--mono);font-size:10px">*</button>
+      <button class="rte-btn" title="Incerto  {?…}" onclick="wrapWith('{?','}','')" style="font-family:var(--mono);font-size:10px">?</button>
+      <button class="rte-btn" title="Integrazione  {&lt;…&gt;}" onclick="wrapWith('{&lt;','&gt;}','')" style="font-family:var(--mono);font-size:10px">&lt;&gt;</button>
+      <button class="rte-btn" title="Abbreviazione  {abbr/expan}" onclick="wrapAbbr()" style="font-family:var(--mono);font-size:9px">ab/</button>
+      <button class="rte-btn" title="Orig/Reg  {orig=reg}" onclick="wrapOrig()" style="font-family:var(--mono);font-size:9px">=r</button>
+      <button class="rte-btn" title="Aggiunta sopra  {+^…}" onclick="wrapWith('{+^ ','}','')" style="font-size:11px">↑</button>
+      <button class="rte-btn" title="Aggiunta margine dx  {+&gt;…}" onclick="wrapWith('{+> ','}','')" style="font-size:11px">→</button>
+      <button class="rte-btn" title="Aggiunta margine sx  {+&lt;…}" onclick="wrapWith('{+&lt; ','}','')" style="font-size:11px">←</button>
+    </div>
+    <div id="editor-area" contenteditable="true" spellcheck="false"
+         autocorrect="off" autocapitalize="off" autocomplete="off"
+         data-placeholder="Ogni riga = un &lt;lb&gt;. Riga vuota = cambio &lt;p&gt;. [sigla] su riga propria = cambio carta."></div>
+    <textarea id="tei-input-area" spellcheck="false"
+      placeholder="Incolla qui il TEI da convertire in notazione compatta…"
+      style="display:none;flex:1;width:100%;border:none;outline:none;resize:none;
+             font-family:var(--mono);font-size:12.5px;line-height:1.7;padding:18px 20px;
+             background:transparent;color:var(--text);box-sizing:border-box;"></textarea>
+  </div>
+
+  <div class="panel" id="panel-right">
+    <div class="panel-head">
+      <span class="panel-label" id="label-right">TEI / XML</span>
+      <div class="panel-actions">
+        <button class="btn" onclick="copyOutput()">Copia</button>
+        <button class="btn secondary" id="btn-download" onclick="downloadOutput()">Scarica .xml</button>
+        <button class="btn secondary" id="btn-export-tei" onclick="openExportModal()" style="display:none">Esporta come TEI</button>
+      </div>
+    </div>
+    <div class="output-box" id="output-area"></div>
+  </div>
+</div>
+
+<footer>
+  <span>Notazione: <code>[sigla]</code> · <code>{-del}</code> · <code>{*damage}</code> · <code>{?unclear}</code> · <code>{abbr/expan}</code> · <code>{+^ add}</code> · <code>parola[: nota]</code></span>
+  <a href="tei-converter-dipl-guida.html">Guida all'uso →</a>
+</footer>
+
+<div class="modal-overlay" id="modal-export">
+  <div class="modal">
+    <h2>Esporta come TEI</h2>
+    <div class="field"><label>Titolo</label><input type="text" id="f-title" placeholder="Es. Epistola a un amico"></div>
+    <div class="field"><label>Autore</label><input type="text" id="f-author" placeholder="Es. Filippo da Perugia"></div>
+    <div class="field"><label>Curatore (nome del responsabile dell'edizione)</label><input type="text" id="f-editor" placeholder="Es. Mario Rossi"></div>
+    <div class="field"><label>Testimone (sigla = descrizione)</label><input type="text" id="f-witness" placeholder="Es. L = London, British Library, Add. 12345"></div>
+    <div class="field"><label>URL manifesto IIIF <span style="font-weight:400;text-transform:none;letter-spacing:0">(opzionale)</span></label><input type="text" id="f-iiif" placeholder="Es. https://example.org/iiif/manifest.json"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeExportModal()">Annulla</button>
+      <button class="btn primary" onclick="generateTei()">Genera e scarica</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── STATE ── */
+let currentMode = 'compact2tei';
+
+/* ── RICH TEXT EDITOR ── */
+function rteFormat(cmd) {
+  document.getElementById('editor-area').focus();
+  document.execCommand(cmd, false, null);
+  updateRteButtons();
+}
+function updateRteButtons() {
+  document.getElementById('btn-bold').classList.toggle('active', document.queryCommandState('bold'));
+  document.getElementById('btn-italic').classList.toggle('active', document.queryCommandState('italic'));
+}
+document.addEventListener('selectionchange', updateRteButtons);
+
+function getEditorText() {
+  const ed = document.getElementById('editor-area');
+  function n2t(node) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    const tag = node.nodeName.toLowerCase();
+    const ch = Array.from(node.childNodes).map(n2t).join('');
+    if (tag === 'b' || tag === 'strong') return `**${ch}**`;
+    if (tag === 'i' || tag === 'em')     return `_${ch}_`;
+    if (tag === 'br')                    return '\n';
+    if (tag === 'div' || tag === 'p')    return ch + '\n';
+    return ch;
+  }
+  return n2t(ed).replace(/\n$/, '');
+}
+
+function setEditorText(text) {
+  const ed = document.getElementById('editor-area');
+  ed.innerHTML = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+/* ── UNDO / REDO — stato globale ── */
+const undoStack = [];
+const redoStack = [];
+let lastSaved   = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ed = document.getElementById('editor-area');
+  if (!ed) return;
+
+  function saveUndo() {
+    const cur = ed.innerHTML;
+    if (cur === lastSaved) return;
+    undoStack.push(lastSaved);
+    if (undoStack.length > 100) undoStack.shift();
+    redoStack.length = 0;
+    lastSaved = cur;
+  }
+
+  function applyUndo() {
+    if (!undoStack.length) return;
+    redoStack.push(ed.innerHTML);
+    ed.innerHTML = lastSaved = undoStack.pop();
+    placeCursorAtEnd(ed);
+  }
+
+  function applyRedo() {
+    if (!redoStack.length) return;
+    undoStack.push(ed.innerHTML);
+    ed.innerHTML = lastSaved = redoStack.pop();
+    placeCursorAtEnd(ed);
+  }
+
+  function placeCursorAtEnd(el) {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  // Salva stato ad ogni input (debounced 400ms)
+  let debounceTimer;
+  ed.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(saveUndo, 400);
+  });
+
+  ed.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='b') { e.preventDefault(); rteFormat('bold'); }
+    if ((e.ctrlKey||e.metaKey) && e.key==='i') { e.preventDefault(); rteFormat('italic'); }
+    if ((e.ctrlKey||e.metaKey) && e.key==='z') { e.preventDefault(); applyUndo(); }
+    if ((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.shiftKey && e.key==='Z'))) { e.preventDefault(); applyRedo(); }
+    if ((e.ctrlKey||e.metaKey) && e.key==='{') { e.preventDefault(); wrapWith('{','}',''); }
+    if (e.key==='Enter') { e.preventDefault(); document.execCommand('insertLineBreak'); }
+  });
+
+  // Inizializza stato
+  lastSaved = ed.innerHTML;
+});
+
+/* ── MODE ── */
+function setMode(mode) {
+  currentMode = mode;
+  const c = mode === 'compact2tei';
+  document.getElementById('btn-c2t').classList.toggle('active', c);
+  document.getElementById('btn-t2c').classList.toggle('active', !c);
+  document.getElementById('label-left').textContent  = c ? 'Notazione compatta' : 'TEI / XML';
+  document.getElementById('label-right').textContent = c ? 'TEI / XML' : 'Notazione compatta';
+  document.getElementById('btn-download').style.display = c ? '' : 'none';
+  document.getElementById('rte-toolbar').style.display  = c ? '' : 'none';
+  // In modalità TEI→compatta usa textarea (preserva markup XML grezzo)
+  document.getElementById('editor-area').style.display   = c ? '' : 'none';
+  document.getElementById('tei-input-area').style.display = c ? 'none' : '';
+  document.getElementById('editor-area').innerHTML = '';
+  document.getElementById('tei-input-area').value  = '';
+  document.getElementById('output-area').innerHTML = '';
+  document.getElementById('output-area').dataset.raw = '';
+  document.getElementById('btn-export-tei').style.display = 'none';
+  hideMsg();
+}
+
+/* ── SINTASSI TOGGLE ── */
+function toggleGuide() {
+  const items = document.getElementById('guide-items');
+  const arrow = document.getElementById('guide-arrow');
+  items.classList.toggle('hidden');
+  arrow.style.transform = items.classList.contains('hidden') ? '' : 'rotate(180deg)';
+}
+
+/* ── WRAP SELEZIONE ── */
+/**
+ * Avvolge il testo selezionato con before…after.
+ * Se non c'è selezione, inserisce before+placeholder+after con cursore dentro.
+ * cursor: posizione del cursore dopo l'inserimento (da sinistra di after), default 0
+ */
+function wrapWith(before, after, placeholder) {
+  const ed = document.getElementById('editor-area');
+  ed.focus();
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  // Salva undo prima della modifica
+  const prev = ed.innerHTML;
+
+  const range    = sel.getRangeAt(0);
+  const selected = range.toString();
+  const text     = selected
+    ? before + selected + after
+    : before + (placeholder || '') + after;
+
+  document.execCommand('insertText', false, text);
+
+  // Se non c'era selezione, riposiziona il cursore prima di after
+  if (!selected && placeholder === undefined) {
+    // cursore tra before e after
+    const newSel = window.getSelection();
+    if (newSel && newSel.rangeCount) {
+      const r = newSel.getRangeAt(0);
+      r.setStart(r.startContainer, r.startOffset - after.length);
+      r.collapse(true);
+      newSel.removeAllRanges();
+      newSel.addRange(r);
+    }
+  }
+
+  // Aggiorna undo stack
+  if (ed.innerHTML !== prev) {
+    const undoEvt = new Event('input');
+    ed.dispatchEvent(undoEvt);
+  }
+}
+
+// Abbreviazione: selezione diventa abbr, placeholder per expan
+function wrapAbbr() {
+  const sel = window.getSelection();
+  const selected = sel && sel.rangeCount ? sel.getRangeAt(0).toString() : '';
+  if (selected) {
+    wrapWith('{', '/expan}', null);
+  } else {
+    wrapWith('{abbr/', '}', 'expan');
+  }
+}
+
+// Orig/Reg: selezione diventa orig, placeholder per reg
+function wrapOrig() {
+  const sel = window.getSelection();
+  const selected = sel && sel.rangeCount ? sel.getRangeAt(0).toString() : '';
+  if (selected) {
+    wrapWith('{', '=reg}', null);
+  } else {
+    wrapWith('{', '=reg}', 'orig');
+  }
+}
+function escXml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/**
+ * Normalizza il contenuto di orig/reg:
+ * U+00B7 · → U+002E . (autocorrezione macOS di .= → ·=)
+ * Applicato solo dentro costrutti {…=…}, non al testo libero.
+ */
+function normContent(s) { return s.replace(/\u00B7/g, '.'); }
+
+/* ── PARSER INLINE ── */
+
+/**
+ * Espande un singolo token (parola semplice o costrutto {…}) in XML TEI.
+ * Usato per produrre il contenuto prima dell'ancora <seg/>.
+ */
+function expandToken(token) {
+  if (!/^\{/.test(token)) return escXml(token);
+  const pats = [
+    { re: /^\{((?:[^{}=\/]|\{[^{}]*\})+)=((?:[^{}]|\{[^{}]*\})*)\}$/, fn: (m,o,r) => `<choice><orig>${escXml(normContent(o))}</orig><reg>${escXml(normContent(r))}</reg></choice>` },
+    { re: /^\{([^{}\/]+)\/([^{}\/]+)\}$/, fn: (m,a,e) => `<choice><abbr>${escXml(a.trim())}</abbr><expan>${escXml(e.trim())}</expan></choice>` },
+    { re: /^\{-([^{}]+)>([^{}]*)\}$/,     fn: (m,d,a) => `<subst><del rend="overwritten">${escXml(d)}</del><add place="over">${escXml(a)}</add></subst>` },
+    { re: /^\{-([^{}]+)\}$/,              fn: (m,t) => `<del>${escXml(t)}</del>` },
+    { re: /^\{\*([^{}]+)\}$/,             fn: (m,t) => `<damage>${escXml(t)}</damage>` },
+    { re: /^\{\?([^{}]+)\}$/,             fn: (m,t) => `<unclear>${escXml(t)}</unclear>` },
+    { re: /^\{<([^{}]+)>\}$/,             fn: (m,t) => `<supplied>${escXml(t)}</supplied>` },
+    { re: /^\{\+\^((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}$/, fn: (m,t) => `<add place="above">${parseInlineRawNoNote(t.trim())}</add>` },
+    { re: /^\{\+>((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}$/,  fn: (m,t) => `<add place="marginRight">${parseInlineRawNoNote(t.trim())}</add>` },
+    { re: /^\{\+<((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}$/,  fn: (m,t) => `<add place="marginLeft">${parseInlineRawNoNote(t.trim())}</add>` },
+    { re: /^\{\+_((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}$/,  fn: (m,t) => `<add place="marginBottom">${parseInlineRawNoNote(t.trim())}</add>` },
+  ];
+  for (const p of pats) { const m = p.re.exec(token); if (m) return p.fn(...m); }
+  return escXml(token);
+}
+
+/**
+ * Versione ridotta di parseInlineRaw senza gestione note e milestone.
+ * Usata per espandere il contenuto annidato dentro {+^ …}, {+> …} ecc.
+ */
+function parseInlineRawNoNote(text) {
+  const patterns = [
+    { re: /\{((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)=((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)\}/, fn: (m,o,r) => `<choice><orig>${parseInlineRawNoNote(normContent(o))}</orig><reg>${parseInlineRawNoNote(normContent(r))}</reg></choice>` },
+    { re: /\{((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\/((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}/, fn: (m,a,e) => `<choice><abbr>${parseInlineRawNoNote(a.trim())}</abbr><expan>${parseInlineRawNoNote(e.trim())}</expan></choice>` },
+    { re: /\{-([^{}]+)>([^{}]*)\}/,     fn: (m,d,a) => `<subst><del rend="overwritten">${escXml(d)}</del><add place="over">${escXml(a)}</add></subst>` },
+    { re: /\{-([^{}]+)\}/,              fn: (m,t) => `<del>${escXml(t)}</del>` },
+    { re: /\{\*([^{}]+)\}/,             fn: (m,t) => `<damage>${escXml(t)}</damage>` },
+    { re: /\{\?([^{}]+)\}/,             fn: (m,t) => `<unclear>${escXml(t)}</unclear>` },
+    { re: /\{<([^{}]+)>\}/,             fn: (m,t) => `<supplied>${escXml(t)}</supplied>` },
+  ];
+  let remaining = text, result = '';
+  while (remaining.length > 0) {
+    let bestIdx = Infinity, bestMatch = null, bestFn = null;
+    for (const p of patterns) {
+      const m = p.re.exec(remaining);
+      if (m && m.index < bestIdx) { bestIdx = m.index; bestMatch = m; bestFn = p.fn; }
+    }
+    if (!bestMatch) { result += escXml(remaining); break; }
+    if (bestIdx > 0) result += escXml(remaining.slice(0, bestIdx));
+    result += bestFn(...bestMatch);
+    remaining = remaining.slice(bestIdx + bestMatch[0].length);
+  }
+  return result;
+}
+
+/**
+ * Parsa una riga di notazione compatta in XML TEI inline.
+ *
+ * Sintassi nota:  parola[: testo]  oppure  {costrutto}[: testo]
+ *   → <xml-del-token><seg xml:id="{facs}-{lb}.{prog}"/>
+ *   Le <note> vengono accumulate in pendingNotes[] ed emesse a fine carta.
+ *
+ * facs  = sigla della carta corrente (es. "L_41v"), usata nel xml:id
+ * lbNum = numero del <lb> corrente (es. 3 → "L_41v-3.1")
+ * Il progressivo .prog si riavvia a 1 per ogni nuovo <lb>.
+ */
+function parseInlineRaw(text, facs, lbNum) {
+  // Pre-processa: sostituisce token[: nota] con placeholder \x02i\x03
+  // Il [: è obbligatorio — distingue dalla sintassi [sigla] (senza ':')
+  const notePH = []; // { id, innerXml, nota }
+  let noteIdx  = 0;
+  const preprocessed = text.replace(
+    /(\{[^{}]*\}|\S+?)\[:\s*([^\]]+)\]/g,
+    (_, token, nota) => {
+      noteIdx++;
+      notePH.push({
+        id:       `${facs}-${lbNum}.${noteIdx}`,
+        innerXml: expandToken(token),
+        nota:     nota.trim(),
+      });
+      return `\x02${notePH.length - 1}\x03`;
+    }
+  );
+
+  const patterns = [
+    { re: /\x02(\d+)\x03/, fn: (m, i) => {
+        const p = notePH[+i];
+        pendingNotes.push({ id: p.id, nota: p.nota });
+        // Ancora vuota DOPO il token, come in philippe.xml
+        return `${p.innerXml}<seg xml:id="${p.id}"/>`;
+      }
+    },
+    { re: /\|/, fn: () => { milestoneCounter++; return `<milestone unit="verse" n="${milestoneCounter}"/>`; } },
+    { re: /\{((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)=((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*)\}/, fn: (m,o,r) => `<choice><orig>${parseInlineRawNoNote(normContent(o))}</orig><reg>${parseInlineRawNoNote(normContent(r))}</reg></choice>` },
+    { re: /\{((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\/((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}/, fn: (m,a,e) => `<choice><abbr>${parseInlineRawNoNote(a.trim())}</abbr><expan>${parseInlineRawNoNote(e.trim())}</expan></choice>` },
+    { re: /\{-([^{}]+)>([^{}]*)\}/,     fn: (m,d,a) => `<subst><del rend="overwritten">${escXml(d)}</del><add place="over">${escXml(a)}</add></subst>` },
+    { re: /\{-([^{}]+)\}/,              fn: (m,t) => `<del>${escXml(t)}</del>` },
+    { re: /\{\*([^{}]+)\}/,             fn: (m,t) => `<damage>${escXml(t)}</damage>` },
+    { re: /\{\?([^{}]+)\}/,             fn: (m,t) => `<unclear>${escXml(t)}</unclear>` },
+    { re: /\{<([^{}]+)>\}/,             fn: (m,t) => `<supplied>${escXml(t)}</supplied>` },
+    { re: /\{\+\^((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}/, fn: (m,t) => `<add place="above">${parseInlineRawNoNote(t.trim())}</add>` },
+    { re: /\{\+>((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}/,  fn: (m,t) => `<add place="marginRight">${parseInlineRawNoNote(t.trim())}</add>` },
+    { re: /\{\+<((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}/,  fn: (m,t) => `<add place="marginLeft">${parseInlineRawNoNote(t.trim())}</add>` },
+    { re: /\{\+_((?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})+)\}/,  fn: (m,t) => `<add place="marginBottom">${parseInlineRawNoNote(t.trim())}</add>` },
+    { re: /\*\*([^*]+)\*\*/,            fn: (m,t) => `<hi rend="bold">${escXml(t)}</hi>` },
+    { re: /_([^_]+)_/,                  fn: (m,t) => `<hi rend="italic">${escXml(t)}</hi>` },
+  ];
+
+  let remaining = preprocessed;
+  let result    = '';
+  while (remaining.length > 0) {
+    let bestIdx = Infinity, bestMatch = null, bestFn = null;
+    for (const p of patterns) {
+      const m = p.re.exec(remaining);
+      if (m && m.index < bestIdx) { bestIdx = m.index; bestMatch = m; bestFn = p.fn; }
+    }
+    if (!bestMatch) { result += escXml(remaining); break; }
+    if (bestIdx > 0) result += escXml(remaining.slice(0, bestIdx));
+    result += bestFn(...bestMatch);
+    remaining = remaining.slice(bestIdx + bestMatch[0].length);
+  }
+  return result;
+}
+
+/* ── COMPACT → TEI ── */
+let milestoneCounter = 0;
+let pendingNotes     = []; // note accumulate per la carta corrente: [{id, nota}]
+
+/**
+ * Serializza il testo di una nota preservando il markup inline:
+ *   _testo_   → <hi rend="italic">testo</hi>
+ *   **testo** → <hi rend="bold">testo</hi>
+ *   &lt; → &amp;lt;  (preservato come entità letterale)
+ *   >  → > (permesso nel content testuale XML)
+ */
+function parseNoteText(nota) {
+  // Escape di & e < (obbligatori), lascia > letterale
+  let s = nota.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  // **grassetto**
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<hi rend="bold">$1</hi>');
+  // _corsivo_
+  s = s.replace(/(?<!\w)_([^_]+)_(?!\w)/g, '<hi rend="italic">$1</hi>');
+  return s;
+}
+
+/** Emette le <note> accumulate nel buffer e lo svuota. */
+function flushNotes(xml) {
+  pendingNotes.forEach(({ id, nota }) => {
+    xml.push(`    <note target="#${id}">${parseNoteText(nota)}</note>`);
+  });
+  pendingNotes = [];
+}
+
+function compactToDipl(input, outputType = 'diplomatic') {
+  const isInterp   = outputType === 'interpretative';
+  const startMilestone = parseInt(document.getElementById('start-milestone').value || '1', 10) || 1;
+  milestoneCounter = startMilestone - 1;
+  pendingNotes     = [];
+  const paraMode = document.getElementById('para-mode').value;
+  const startLb  = parseInt(document.getElementById('start-lb').value || '1', 10) || 1;
+  const lines    = input.split('\n');
+  const xml      = [];
+
+  let lbCounter    = startLb - 1;
+  let paraCounter  = 0;
+  let inPara       = false;
+  let prevEmpty    = true;
+  let currentFacs  = 'ms';
+  let inLg         = false;
+  let verseCounter = 0;
+
+  function openPara() {
+    if (paraMode === 'none') return;
+    paraCounter++;
+    xml.push(paraMode === 'unnumbered' ? '  <p>' : `  <p n="${paraCounter}">`);
+    inPara = true;
+  }
+  function closePara() {
+    if (paraMode === 'none' || !inPara) return;
+    if (inLg) { xml.push('    </lg>'); inLg = false; verseCounter = 0; }
+    xml.push('  </p>');
+    inPara = false;
+  }
+
+  const useAb = paraMode === 'none';
+  xml.push(isInterp ? '<div type="interpretative">' : '<div type="diplomatic">');
+  if (useAb) xml.push('  <ab>');
+
+  lines.forEach(rawLine => {
+    const line = rawLine.trimEnd();
+
+    // Riga vuota
+    if (line.trim() === '') {
+      closePara();
+      prevEmpty = true;
+      return;
+    }
+
+    // [sigla] — cambio carta
+    const pbMatch = line.trim().match(/^\[([^\]]+)\]$/);
+    if (pbMatch) {
+      const sigla = pbMatch[1].trim();
+      flushNotes(xml);
+      currentFacs = sigla;
+      if (prevEmpty) {
+        closePara();
+        if (paraMode === 'per-page') paraCounter = 0;
+        xml.push(`  <pb facs="#${sigla}"/>`);
+        if (!useAb) openPara();
+      } else {
+        xml.push(`    <pb facs="#${sigla}"/>`);
+      }
+      lbCounter = startLb - 1;
+      prevEmpty = false;
+      return;
+    }
+
+    // $ — toggle blocco versale <lg>
+    if (line.trim() === '$') {
+      if (!inLg) {
+        if (prevEmpty && !useAb) openPara();
+        xml.push('    <lg>');
+        inLg = true;
+        verseCounter = 0;
+      } else {
+        xml.push('    </lg>');
+        inLg = false;
+        verseCounter = 0;
+      }
+      prevEmpty = false;
+      return;
+    }
+
+    // Riga di testo normale
+    if (prevEmpty && !useAb) openPara();
+    prevEmpty = false;
+    lbCounter++;
+
+    if (line.trim() === '/') {
+      xml.push(`    <lb n="${lbCounter}"/>`);
+      return;
+    }
+
+    const content = parseInlineRaw(line.trim(), currentFacs, lbCounter);
+
+    if (isInterp && inLg) {
+      // Interpretativa dentro <lg> → <l n="N"><lb n="N"/>testo</l>
+      verseCounter++;
+      xml.push(`      <l n="${verseCounter}"><lb n="${lbCounter}"/>${content}</l>`);
+    } else {
+      // Diplomatica (default) o interpretativa in prosa
+      xml.push(`    <lb n="${lbCounter}"/>${content}`);
+    }
+  });
+
+  // Note dell'ultima carta
+  flushNotes(xml);
+
+  // Chiude eventuale <lg> aperto
+  if (inLg) { xml.push('    </lg>'); }
+
+  closePara();
+  if (useAb) xml.push('  </ab>');
+  xml.push('</div>');
+  return xml.join('\n');
+}
+
+/* ── TEI → COMPACT (renderer inverso) ── */
+function teiToCompact(xmlStr) {
+  try {
+    const doc = new DOMParser().parseFromString(xmlStr, 'application/xml');
+    if (doc.querySelector('parsererror')) return '<!-- Errore XML -->';
+    const NS  = 'http://www.tei-c.org/ns/1.0';
+    const div = doc.getElementsByTagNameNS(NS,'div')[0] || doc.querySelector('div');
+    if (!div) return '<!-- Nessun <div> trovato -->';
+
+    // Costruisce mappa id → testo nota da tutti i <note target="#id"> del div
+    // Preserva il markup <hi> dentro le note
+    const noteMap = {};
+    Array.from(div.getElementsByTagNameNS(NS,'note')).forEach(n => {
+      const tgt = (n.getAttribute('target') || '').replace('#', '');
+      if (!tgt) return;
+      // Serializza il contenuto della nota preservando <hi rend>
+      let noteText = '';
+      Array.from(n.childNodes).forEach(c => {
+        if (c.nodeType === 3) { noteText += c.textContent; }
+        else if (c.nodeType === 1 && c.localName === 'hi') {
+          const r = c.getAttribute('rend');
+          if (r === 'italic') noteText += `_${c.textContent}_`;
+          else if (r === 'bold') noteText += `**${c.textContent}**`;
+          else noteText += c.textContent;
+        } else { noteText += c.textContent; }
+      });
+      noteMap[tgt] = noteText.trim();
+    });
+
+    let out = '';
+    function walk(node) {
+      if (node.nodeType === 3) {
+        const raw = node.textContent;
+        const t   = raw.trim();
+        if (!t) return;
+        // Preserva spazio iniziale se il nodo precedente era un elemento inline
+        const prev = node.previousSibling;
+        const needsLeading = prev && prev.nodeType === 1 && raw.match(/^\s/)
+          && out && !out.endsWith('\n') && !out.endsWith(' ');
+        // Preserva spazio finale se il nodo successivo è un elemento inline
+        const next = node.nextSibling;
+        const needsTrailing = next && next.nodeType === 1 && raw.match(/\s$/);
+        out += (needsLeading ? ' ' : '') + t + (needsTrailing ? ' ' : '');
+        return;
+      }
+      const tag = node.localName;
+      if (tag === 'pb')   { if (out && !out.endsWith('\n')) out += '\n'; out += `\n[${(node.getAttribute('facs')||'').replace('#','')}]\n`; return; }
+      if (tag === 'lb')   {
+        if (node.getAttribute('break') === 'no') return; // break=no: non va a capo
+        if (out && !out.endsWith('\n')) out += '\n';
+        return;
+      }
+      if (tag === 'l') {
+        // Verso dell'interpretativa: attraversa il contenuto e aggiunge \n finale
+        Array.from(node.childNodes).forEach(walk);
+        if (!out.endsWith('\n')) out += '\n';
+        // Appende [: nota] se il verso contiene un <seg> con nota
+        return;
+      }
+      if (tag === 'milestone' && node.getAttribute('unit')==='verse') { out += ' |'; return; }
+      if (tag === 'p')    { Array.from(node.childNodes).forEach(walk); if (!out.endsWith('\n')) out += '\n'; out += '\n'; return; }
+      if (tag === 'del')  { out += `{-${node.textContent}}`; return; }
+      if (tag === 'subst') {
+        const d = Array.from(node.childNodes).find(c => c.nodeType===1 && c.localName==='del');
+        const a = Array.from(node.childNodes).find(c => c.nodeType===1 && c.localName==='add');
+        out += `{-${d ? d.textContent : ''}>${a ? a.textContent : ''}}`;
+        return;
+      }
+      if (tag === 'damage') { out += `{*${node.textContent}}`; return; }
+      if (tag === 'unclear') { out += `{?${node.textContent}}`; return; }
+      if (tag === 'supplied') { out += `{<${node.textContent}>}`; return; }
+      if (tag === 'add')  {
+        const pl = node.getAttribute('place') || 'above';
+        const s  = pl==='above'?'^':pl==='marginRight'?'>':pl==='marginLeft'?'<':'_';
+        let inner = '';
+        const prevOut = out;
+        out = '';
+        Array.from(node.childNodes).forEach(walk);
+        inner = out;
+        out = prevOut + `{+${s} ${inner}}`;
+        return;
+      }
+      if (tag === 'choice') {
+        // Cerca solo tra figli diretti (non discendenti) per evitare
+        // collisioni con <choice> annidati dentro <orig>
+        const childByTag = (parent, name) =>
+          Array.from(parent.childNodes).find(c => c.nodeType === 1 && c.localName === name) || null;
+        const a = childByTag(node, 'abbr');
+        const e = childByTag(node, 'expan');
+        const o = childByTag(node, 'orig');
+        const r = childByTag(node, 'reg');
+        if (a && e) { out += `{${a.textContent}/${e.textContent}}`; return; }
+        if (o && r) {
+          // Ricava il contenuto di orig traversando ricorsivamente
+          const prevOut = out;
+          out = '';
+          Array.from(o.childNodes).forEach(walk);
+          const origContent = out;
+          out = prevOut + `{${origContent}=${r.textContent}}`;
+          return;
+        }
+        return;
+      }
+      if (tag === 'seg') {
+        // xml:id è un attributo con namespace — va letto con getAttributeNS o getAttribute
+        const id = node.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id')
+                || node.getAttribute('xml:id')
+                || '';
+        if (id && noteMap[id]) out += `[: ${noteMap[id]}]`;
+        return;
+      }
+      if (tag === 'note') { return; } // già consumata via noteMap
+      if (tag === 'lg')   {
+        if (out && !out.endsWith('\n')) out += '\n';
+        out += '$\n';
+        Array.from(node.childNodes).forEach(walk);
+        if (!out.endsWith('\n')) out += '\n';
+        out += '$\n';
+        return;
+      }
+      if (tag === 'hi') {
+        const r = node.getAttribute('rend');
+        if (r === 'bold')   { out += `**${node.textContent}**`; return; }
+        if (r === 'italic') { out += `_${node.textContent}_`;  return; }
+      }
+      Array.from(node.childNodes).forEach(walk);
+    }
+    Array.from(div.childNodes).forEach(walk);
+    return out.trim();
+  } catch(e) { return `<!-- Errore: ${e.message} -->`; }
+}
+
+/* ── HIGHLIGHT ── */
+function highlightTei(xml) {
+  return xml
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/&lt;!--([\s\S]*?)--&gt;/g,'<span class="xc">&lt;!--$1--&gt;</span>')
+    .replace(/&lt;(\/?)([\w:]+)((?:\s+[\w:]+="[^"]*")*)\s*(\/??)&gt;/g,(m,sl,tag,attrs,self)=>{
+      const cls = {'del':'xa','damage':'xa','unclear':'xa','add':'xv','supplied':'xv','choice':'xt','abbr':'xt','expan':'xt'}[tag]||'xt';
+      const ah  = attrs.replace(/([\w:]+)="([^"]*)"/g,'<span class="xt">$1</span>=<span class="xv">"$2"</span>');
+      return `<span class="xt">&lt;${sl}</span><span class="${cls}">${tag}</span>${ah}<span class="xt">${self}&gt;</span>`;
+    });
+}
+
+/* ── CONVERT ── */
+function convert() {
+  const input = currentMode==='compact2tei'
+    ? getEditorText().trim()
+    : document.getElementById('tei-input-area').value.trim();
+  if (!input) { showMsg('Inserisci del testo.','err'); return; }
+  const out = document.getElementById('output-area');
+  if (currentMode === 'compact2tei') {
+    const outputType = document.getElementById('output-type')?.value || 'diplomatic';
+    const result = compactToDipl(input, outputType);
+    out.innerHTML = highlightTei(result);
+    out.dataset.raw = result;
+    document.getElementById('btn-export-tei').style.display = '';
+    showMsg('Conversione completata.','ok');
+  } else {
+    out.textContent = teiToCompact(input);
+    out.dataset.raw = out.textContent;
+    showMsg('Conversione completata.','ok');
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); convert(); }
+});
+
+/* ── UTILITY ── */
+function showMsg(t,type) { const m=document.getElementById('msg-area'); m.textContent=t; m.className='msg '+type; }
+function hideMsg() { document.getElementById('msg-area').className='msg'; }
+
+function clearLeft() {
+  const ed = document.getElementById('editor-area');
+  if (!ed.innerHTML.trim()) return;
+  // Salva nello stack undo prima di cancellare
+  undoStack.push(ed.innerHTML);
+  if (undoStack.length > 100) undoStack.shift();
+  redoStack.length = 0;
+  lastSaved = '';
+  ed.innerHTML='';
+  document.getElementById('output-area').innerHTML='';
+  document.getElementById('output-area').dataset.raw='';
+  document.getElementById('btn-export-tei').style.display='none';
+  document.getElementById('start-lb').value='1';
+  hideMsg();
+}
+
+function copyOutput() {
+  const raw = document.getElementById('output-area').dataset.raw||document.getElementById('output-area').textContent;
+  navigator.clipboard.writeText(raw).then(()=>showMsg('Copiato.','ok'));
+}
+
+function downloadOutput() {
+  const raw = document.getElementById('output-area').dataset.raw;
+  if (!raw) { showMsg('Nessun contenuto.','err'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([raw],{type:'application/xml'}));
+  a.download = 'diplomatica.xml'; a.click();
+}
+
+function loadExample() {
+  if (currentMode==='compact2tei') {
+    setEditorText(`[L_41v]
+Amicho {-dileto} charisimo cholquale neltenpo {ch/che} fortuna fo al
+mio felize stato {p/pro}spera et {*fauore}[: lacuna non sanabile] ideleteuolj {+^ molto} ono
+rj et {<propij>} chomodi partizipai / Ora {p/per}{ch/che} ella con
+turbido volto {+> nota del copista} et ofoschatj venti nel fondo d(i) sua rota tuffato
+
+[L_42r]
+mi tiene volgiendo eltenpo[: cfr. Boccaccio, Esposizioni, VII] dileteuole in rio piu i propficuj
+benj nelprexente chomo nelpasato fezi co(m)partire nolposo.`);
+  } else {
+    document.getElementById('editor-area').innerText =
+`<div type="diplomatic">
+  <pb facs="#L_41v"/>
+  <p n="1">
+    <lb n="1"/>Amicho <del>dileto</del> charisimo
+    <choice><abbr>ch</abbr><expan>che</expan></choice> fortuna fo al
+    <lb n="2"/>mio <choice><abbr>p</abbr><expan>pro</expan></choice>spera et
+    <damage>fauore</damage> <add place="above">molto</add> ono
+  </p>
+</div>`;
+  }
+  document.getElementById('output-area').innerHTML='';
+  document.getElementById('output-area').dataset.raw='';
+  hideMsg();
+}
+
+/* ── EXPORT MODAL ── */
+function openExportModal()  { document.getElementById('modal-export').classList.add('open'); }
+function closeExportModal() { document.getElementById('modal-export').classList.remove('open'); }
+
+function generateTei() {
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  const title   = document.getElementById('f-title').value.trim();
+  const author  = document.getElementById('f-author').value.trim();
+  const editor  = document.getElementById('f-editor').value.trim();
+  const witness = document.getElementById('f-witness').value.trim();
+  const iiif    = document.getElementById('f-iiif').value.trim();
+  const raw     = document.getElementById('output-area').dataset.raw || '';
+
+  // Estrai sigla e descrizione testimone (formato: "L = London, British Library…")
+  const witParts  = witness.split('=').map(p => p.trim());
+  const witSigla  = witParts[0] || 'L';
+  const witDesc   = witParts[1] || witParts[0] || '';
+
+  // Raccogli i [sigla] usati nel testo (pb facs="#sigla") → zone del facsimile
+  const pbSigle = [...raw.matchAll(/<pb facs="#([^"]+)"/g)].map(m => m[1]);
+  // Deduplica mantenendo l'ordine
+  const zonesUniq = [...new Set(pbSigle)];
+
+  // Blocco <facsimile> (solo se c'è almeno una zona)
+  let facsimileBlock = '';
+  if (zonesUniq.length > 0) {
+    const zones = zonesUniq.map(z => {
+      // Tenta di costruire un n leggibile: "L_41v" → "f.41v"
+      const nAttr = z.replace(/^[^_]+_/, 'f.');
+      return `      <zone xml:id="${esc(z)}" n="${esc(nAttr)}"/>`;
+    }).join('\n');
+    const graphicLine = iiif
+      ? `\n      <graphic url="${esc(iiif)}" mimeType="application/ld+json"/>`
+      : '';
+    facsimileBlock =
+`\n  <facsimile>
+    <surface xml:id="${esc(witSigla)}" corresp="#${esc(witSigla)}">${graphicLine}
+${zones}
+    </surface>
+  </facsimile>`;
+  }
+
+  // titleStmt
+  const respStmt = editor
+    ? `\n        <respStmt>\n          <resp>Edizione digitale</resp>\n          <name>${esc(editor)}</name>\n        </respStmt>`
+    : '';
+  const authorEl = author ? `\n        <author>${esc(author)}</author>` : '';
+
+  // sourceDesc — solo listWit, come in philippe.xml
+  const sourceDesc =
+`      <sourceDesc>
+        <listWit>
+          <witness xml:id="${esc(witSigla)}">${esc(witDesc)}</witness>
+        </listWit>
+      </sourceDesc>`;
+
+  // Contenuto del div diplomatico
+  const divMatch   = raw.match(/<div type="diplomatic">([\s\S]*?)<\/div>/);
+  const divContent = divMatch ? divMatch[1] : '\n    <!-- Inserisci il testo codificato -->\n  ';
+
+  const xml =
+`<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>${esc(title)}</title>${authorEl}${respStmt}
+      </titleStmt>
+${sourceDesc}
+    </fileDesc>
+  </teiHeader>${facsimileBlock}
+  <text>
+    <body>
+      <div type="diplomatic">${divContent}</div>
+    </body>
+  </text>
+</TEI>`;
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+  a.download = (title || 'edizione-diplomatica') + '.xml';
+  a.click();
+  closeExportModal();
+}
+</script>
+</body>
+</html>
